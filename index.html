@@ -5,25 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>手のひらのナイショ話</title>
     <style>
-        body {
+        /* スマホの下部途切れを防止するための設定 */
+        html, body {
+            height: 100%;
             margin: 0;
-            background-color: #1a1515; /* 中世の夜を思わせる暗い背景 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            touch-action: none; 
-            font-family: 'Hiragino Mincho ProN', 'Noto Serif JP', serif; /* 世界観に合わせて明朝体へ */
+            padding: 0;
+            overflow: hidden;
+            background-color: #1a1515;
+            touch-action: none;
+            font-family: 'Hiragino Mincho ProN', 'Noto Serif JP', serif;
             user-select: none;
             -webkit-user-select: none;
         }
 
         #game-container {
             width: 100%;
+            height: 100dvh; /* スマホの表示領域に正確に合わせる */
+            max-height: 100%;
             max-width: 400px;
-            height: 100vh;
-            max-height: 800px;
-            background-color: #f4d5b6; /* 手のひらの肌色 */
+            margin: 0 auto;
+            background-color: #f4d5b6;
             position: relative;
             overflow: hidden;
             box-shadow: 0 0 20px rgba(0,0,0,0.9);
@@ -57,7 +58,7 @@
             letter-spacing: 2px;
         }
 
-        /* UI要件: ボタンはすべて同じサイズ・デザイン */
+        /* スタート画面のボタン（すべて同じサイズ・デザイン） */
         .button-group {
             display: flex;
             flex-direction: column;
@@ -92,7 +93,6 @@
             z-index: 1;
         }
         
-        /* 相手の照れ/くすぐったいゲージ */
         #gauge-container {
             position: absolute;
             top: 20px;
@@ -123,10 +123,9 @@
             display: none;
         }
 
-        /* メッセージウィンドウ */
         #message-box {
             position: absolute;
-            bottom: 5%;
+            bottom: 3%; /* 下が切れないように少し浮かす */
             left: 5%;
             right: 5%;
             height: 25%;
@@ -140,7 +139,7 @@
             flex-direction: column;
             justify-content: space-between;
             color: #f4d5b6;
-            cursor: pointer; /* タップで文字送り */
+            cursor: pointer;
         }
         #message-text {
             margin: 0;
@@ -160,7 +159,7 @@
             bottom: 35%;
             left: 50%;
             transform: translateX(-50%);
-            padding: 10px 30px;
+            padding: 12px 30px;
             background-color: #8d4a4a;
             border: 2px solid #d3b89e;
             color: white;
@@ -168,13 +167,13 @@
             z-index: 4;
             display: none;
             font-family: inherit;
+            font-size: 16px;
         }
     </style>
 </head>
 <body>
 
     <div id="game-container">
-        <!-- タイトル画面 -->
         <div id="title-screen" class="screen active">
             <h1>手のひらのナイショ話</h1>
             <div class="button-group">
@@ -184,7 +183,6 @@
             </div>
         </div>
 
-        <!-- ゲーム画面 -->
         <div id="game-screen" class="screen">
             <canvas id="canvas-layer"></canvas>
             
@@ -203,46 +201,62 @@
     </div>
 
     <script>
-        // --- シナリオデータ ---
+        // --- 5日間のシナリオデータ ---
         const scenarios = {
             day1_intro: [
-                "夕食の片付けも終わり、暖炉の火がパチパチと心地よい音を立てている。",
-                "「……ほら、手。貸して」",
-                "日課となっているマッサージ。幼馴染の彼は、少し照れくさそうにゴツゴツした手のひらを差し出した。",
-                "親指でゆっくりとほぐしていると、ふと、伝えられない想いが胸に込み上げてきた。",
-                "（……このまま、手のひらに文字を書いたら、伝わるかな）",
-                "【指で画面をなぞって、文字を書いてみよう】"
+                "夕食の片付けも終わり、暖炉の火が心地よい音を立てている。",
+                "「ほら、手」",
+                "日課のマッサージ。幼馴染の彼は、無防備に手のひらを差し出した。",
+                "（……この手に、文字を書いてみたら伝わるかな）"
             ],
             day1_fail: [
-                "「……っ、ちょ、待て！」",
+                "「……っ、ちょ、何すんだよ！」",
                 "ビクッと肩を揺らし、彼は慌てて手を引っ込めた。",
-                "「くすぐったいって！ 何書いてるか全然わからなかったぞ……」",
-                "どうやら、ゆっくり書いている間に消えてしまったらしい。明日の夜、もう一度試してみよう……。"
+                "「くすぐったいって！ 何書いてるか全然わからなかったぞ……」"
             ],
             day2_intro: [
                 "翌日の夜。",
-                "今日も食後、暖炉の前で彼の手をマッサージする時間がやってきた。",
                 "「……昨日みたいに、くすぐったくすんなよ？」",
-                "警戒しつつも手を預けてくれる彼。",
-                "（今日こそ、少しでも伝わるように……早く、でも丁寧に書こう）"
+                "警戒しつつも、彼はまた手を預けてくれた。",
+                "（今日こそ……早く、でも丁寧に書こう）"
             ],
             day2_fail: [
-                "「あーっ！ もう限界、ギブ！！」",
+                "「あーっ！ もう限界！」",
                 "またしても手を引っ込められてしまった。",
-                "「お前、絶対わざとやってるだろ！ 手のひらは敏感なんだってば……」",
-                "赤くなった顔で睨まれる。もどかしい。伝わらないまま、また夜が更けていく……。"
+                "「お前、絶対わざとやってるだろ……」"
             ],
             day3_intro: [
-                "さらに数日後の夜。",
-                "「……」",
-                "今日は無言のまま、彼からすっと手のひらを差し出してきた。",
-                "「……今日は、逃げないから。くすぐったくても我慢する」",
-                "「お前が何書きたいのか、ちゃんと知りたいから……教えてくれよ」",
-                "彼の真剣な眼差し。",
-                "（……今なら、きっと全部伝わる）",
-                "【ゆっくりと、あなたの想いを書いてください】"
+                "３日目。",
+                "「……今日は我慢する。だから、普通に揉んでくれ」",
+                "（少しだけなら、耐えてくれるかもしれない……）"
             ],
-            day3_outro: [
+            day3_fail: [
+                "「……っ、ん、やっぱ無理！！」",
+                "「手のひらって敏感なんだよ。変なことすんなって……」",
+                "少し赤くなった顔でそっぽを向かれてしまった。"
+            ],
+            day4_intro: [
+                "４日目。",
+                "「……」",
+                "彼からは何も言わず、ただすっと手が差し出された。",
+                "（今日こそ、最後まで書ききってみせる）"
+            ],
+            day4_fail: [
+                "「あーもう、ごめん！ 限界！！」",
+                "あと少しだったのに、彼は頭を抱えてしゃがみこんでしまった。",
+                "「……お前が何したいのか、わかんねぇよ……」",
+                "もどかしさだけが、暖炉の部屋に募っていく。"
+            ],
+            day5_intro: [
+                "５日目。",
+                "「……」",
+                "彼は私の目を真っ直ぐに見つめ、ぎゅっと一度手を握り、そして開いた。",
+                "「……今日は、絶対逃げない」",
+                "「お前が何書きたいのか、ちゃんと知りたい。……教えてくれ」",
+                "（……今なら、きっと全部伝わる）",
+                "【ゆっくりと、「好き」の二文字を書いてください】"
+            ],
+            day5_outro: [
                 "書き終え、そっと指を離す。",
                 "彼はじっと自分の手のひらを見つめ……やがて、耳まで真っ赤に染め上げた。",
                 "「……っ、ばか」",
@@ -252,15 +266,14 @@
             ]
         };
 
-        // --- ゲーム状態管理 ---
         let currentDay = 1;
-        let phase = 'title'; // 'title', 'text', 'draw'
+        let phase = 'title'; 
         let textQueue = [];
         let isDrawing = false;
         let gauge = 0;
         let isFinalDay = false;
+        let drawPoints = 0; // 描画量をカウント
         
-        // --- キャンバス設定 ---
         const canvas = document.getElementById('canvas-layer');
         const ctx = canvas.getContext('2d');
         const gaugeContainer = document.getElementById('gauge-container');
@@ -275,12 +288,10 @@
             const rect = canvas.parentElement.getBoundingClientRect();
             canvas.width = rect.width;
             canvas.height = rect.height;
-            // 背景を肌色で塗りつぶす
             ctx.fillStyle = '#f4d5b6';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        // --- ゲーム進行制御 ---
         function startGame() {
             document.getElementById('title-screen').classList.remove('active');
             document.getElementById('game-screen').classList.add('active');
@@ -292,18 +303,16 @@
         function startDay(day) {
             currentDay = day;
             gauge = 0;
-            isFinalDay = (day === 3);
+            drawPoints = 0;
+            isFinalDay = (day === 5); // 5日目を最終日に設定
             
             ctx.fillStyle = '#f4d5b6';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            if (day === 1) playText(scenarios.day1_intro, () => startDrawPhase());
-            if (day === 2) playText(scenarios.day2_intro, () => startDrawPhase());
-            if (day === 3) playText(scenarios.day3_intro, () => startDrawPhase());
+            const introKey = `day${day}_intro`;
+            playText(scenarios[introKey], () => startDrawPhase());
         }
 
-        // --- テキストシステム ---
-        let textCallback = null;
         function playText(texts, callback) {
             phase = 'text';
             textQueue = [...texts];
@@ -311,6 +320,7 @@
             msgBox.style.display = 'flex';
             gaugeContainer.style.display = 'none';
             gaugeText.style.display = 'none';
+            finishBtn.style.display = 'none';
             showNextText();
         }
 
@@ -323,27 +333,20 @@
         }
 
         function advanceText() {
-            if (phase === 'text') {
-                showNextText();
-            }
+            if (phase === 'text') showNextText();
         }
 
-        // --- お絵かき（マッサージ）システム ---
         function startDrawPhase() {
             phase = 'draw';
-            msgBox.style.display = 'none'; // 文字を書く時はメッセージ枠を消す
+            msgBox.style.display = 'none'; 
             
             if (!isFinalDay) {
                 gaugeContainer.style.display = 'block';
                 gaugeText.style.display = 'block';
                 gaugeBar.style.width = '0%';
-            } else {
-                // 最終日は「書き終える」ボタンを表示
-                finishBtn.style.display = 'block';
             }
         }
 
-        // 座標取得
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -361,7 +364,6 @@
             ctx.lineWidth = 8;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            // 最終日ははっきりとした色、それまでは少しぼやけた色
             ctx.strokeStyle = isFinalDay ? 'rgba(180, 70, 70, 0.8)' : 'rgba(200, 100, 100, 0.5)';
         }
 
@@ -372,15 +374,19 @@
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
 
-            // 1,2日目は触っている間にゲージ上昇
-            if (!isFinalDay) {
-                // 2日目はゲージ上昇が早い（難易度アップ）
-                gauge += (currentDay === 1) ? 0.8 : 1.2; 
+            if (isFinalDay) {
+                // 最終日は描画量をカウントし、一定量を超えたらボタン表示
+                drawPoints++;
+                if (drawPoints > 80) { // 「好き」と書くのに十分なストローク量
+                    finishBtn.style.display = 'block';
+                }
+            } else {
+                // 1〜4日目は日を追うごとにゲージの上がり方が少し緩やかになる
+                const speeds = [1.8, 1.4, 1.0, 0.7]; 
+                gauge += speeds[currentDay - 1]; 
                 gaugeBar.style.width = gauge + '%';
 
-                if (gauge >= 100) {
-                    failDay();
-                }
+                if (gauge >= 100) failDay();
             }
         }
 
@@ -391,51 +397,43 @@
             }
         }
 
-        // PCとスマホのイベント登録（passive:falseでスクロール防止を確実にする）
         canvas.addEventListener('mousedown', handleStart, {passive: false});
         canvas.addEventListener('mousemove', handleMove, {passive: false});
         canvas.addEventListener('mouseup', handleEnd, {passive: false});
         canvas.addEventListener('mouseleave', handleEnd, {passive: false});
-
         canvas.addEventListener('touchstart', handleStart, {passive: false});
         canvas.addEventListener('touchmove', handleMove, {passive: false});
         canvas.addEventListener('touchend', handleEnd, {passive: false});
 
-        // --- メインループ（線のフェードアウト処理） ---
         function gameLoop() {
             if (phase === 'draw' && !isFinalDay) {
-                // 肌色を極薄く重ね塗りし続けることで、書いた線が体温で消えていく「もどかしさ」を表現
-                ctx.fillStyle = 'rgba(244, 213, 182, 0.03)';
+                // 線が徐々に消える演出
+                ctx.fillStyle = 'rgba(244, 213, 182, 0.05)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                // 触っていない時は少しずつゲージ（火照り）が冷める
                 if (!isDrawing && gauge > 0) {
-                    gauge -= 0.2;
+                    gauge -= 0.3;
                     gaugeBar.style.width = gauge + '%';
                 }
             }
             requestAnimationFrame(gameLoop);
         }
 
-        // --- 日数遷移 ---
         function failDay() {
             isDrawing = false;
             phase = 'text';
             gaugeContainer.style.display = 'none';
             gaugeText.style.display = 'none';
             
-            if (currentDay === 1) {
-                playText(scenarios.day1_fail, () => startDay(2));
-            } else if (currentDay === 2) {
-                playText(scenarios.day2_fail, () => startDay(3));
-            }
+            const failKey = `day${currentDay}_fail`;
+            playText(scenarios[failKey], () => startDay(currentDay + 1));
         }
 
         function finishFinalDraw() {
             isDrawing = false;
             finishBtn.style.display = 'none';
-            playText(scenarios.day3_outro, () => {
-                nextMark.style.display = 'none'; // 最後は▼を消す
+            playText(scenarios.day5_outro, () => {
+                nextMark.style.display = 'none'; 
             });
         }
     </script>

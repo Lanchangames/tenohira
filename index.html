@@ -2,34 +2,33 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <!-- スマホで見たときに最適なサイズにし、拡大縮小を無効化 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>手のひらのナイショ話</title>
     <style>
-        /* 全体のリセットと背景設定 */
         body {
             margin: 0;
-            background-color: #222; /* スマホ以外の領域の背景色 */
+            background-color: #1a1515; /* 中世の夜を思わせる暗い背景 */
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            touch-action: none; /* スワイプによる画面スクロールを防止 */
-            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            touch-action: none; 
+            font-family: 'Hiragino Mincho ProN', 'Noto Serif JP', serif; /* 世界観に合わせて明朝体へ */
+            user-select: none;
+            -webkit-user-select: none;
         }
 
-        /* ゲーム画面のコンテナ（スマホ縦画面の比率） */
         #game-container {
             width: 100%;
             max-width: 400px;
-            aspect-ratio: 9 / 16;
-            background-color: #ffe0bd; /* 手のひらをイメージした肌色 */
+            height: 100vh;
+            max-height: 800px;
+            background-color: #f4d5b6; /* 手のひらの肌色 */
             position: relative;
             overflow: hidden;
-            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+            box-shadow: 0 0 20px rgba(0,0,0,0.9);
         }
 
-        /* 各スクリーンの共通設定 */
         .screen {
             display: none;
             width: 100%;
@@ -45,15 +44,20 @@
             display: flex;
         }
 
-        /* タイトル画面の装飾 */
+        /* タイトル画面 */
+        #title-screen {
+            background: linear-gradient(rgba(26,21,21,0.8), rgba(26,21,21,0.8)), url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%233e2723"/></svg>');
+            background-size: cover;
+        }
         h1 {
-            color: #fff;
-            text-shadow: 2px 2px 4px #ff8e8e;
-            margin-bottom: 50px;
-            font-size: 28px;
+            color: #f4d5b6;
+            text-shadow: 2px 2px 5px #000;
+            margin-bottom: 60px;
+            font-size: 26px;
+            letter-spacing: 2px;
         }
 
-        /* スタート画面の3つのボタン（すべて同じサイズ・デザイン） */
+        /* UI要件: ボタンはすべて同じサイズ・デザイン */
         .button-group {
             display: flex;
             flex-direction: column;
@@ -63,79 +67,107 @@
         .menu-btn {
             width: 100%;
             height: 55px;
-            background-color: #ff9e9e;
-            border: 3px solid #fff;
-            border-radius: 30px;
+            background-color: #8d4a4a;
+            border: 2px solid #d3b89e;
+            border-radius: 5px;
             color: #fff;
             font-size: 18px;
-            font-weight: bold;
+            font-family: 'Hiragino Mincho ProN', 'Noto Serif JP', serif;
             cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
             transition: transform 0.1s;
+            box-sizing: border-box;
         }
         .menu-btn:active {
             transform: scale(0.95);
         }
 
-        /* メッセージウィンドウの設定 */
-        #message-box {
-            position: absolute;
-            bottom: 3%;
-            left: 5%;
-            right: 5%;
-            height: 28%;
-            background-color: rgba(255, 255, 255, 0.9);
-            border: 3px solid #ff9e9e;
-            border-radius: 12px;
-            padding: 15px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        #message-text {
-            margin: 0;
-            font-size: 15px;
-            color: #333;
-            line-height: 1.6;
-            word-wrap: break-word;
-        }
-
-        /* 手のひら（キャンバス）部分の設定 */
-        #canvas-container {
+        /* ゲーム画面UI */
+        #canvas-layer {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 65%; /* メッセージウィンドウと被らないように */
-        }
-        canvas {
-            width: 100%;
             height: 100%;
-            display: block;
-            cursor: crosshair;
+            z-index: 1;
         }
-        #instruction {
+        
+        /* 相手の照れ/くすぐったいゲージ */
+        #gauge-container {
             position: absolute;
             top: 20px;
+            left: 10%;
+            width: 80%;
+            height: 10px;
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 5px;
+            z-index: 2;
+            display: none;
+            overflow: hidden;
+        }
+        #gauge-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #ff6b6b;
+            transition: width 0.1s;
+        }
+        #gauge-text {
+            position: absolute;
+            top: 40px;
             width: 100%;
             text-align: center;
-            color: #d36b6b;
+            color: #8d4a4a;
+            font-size: 14px;
             font-weight: bold;
-            pointer-events: none;
-            text-shadow: 1px 1px 2px #fff;
+            z-index: 2;
+            display: none;
         }
 
-        /* 次へボタン・完了ボタン */
-        .action-btn {
+        /* メッセージウィンドウ */
+        #message-box {
+            position: absolute;
+            bottom: 5%;
+            left: 5%;
+            right: 5%;
+            height: 25%;
+            background-color: rgba(26, 21, 21, 0.85);
+            border: 2px solid #d3b89e;
+            border-radius: 8px;
+            padding: 15px;
+            box-sizing: border-box;
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            color: #f4d5b6;
+            cursor: pointer; /* タップで文字送り */
+        }
+        #message-text {
+            margin: 0;
+            font-size: 16px;
+            line-height: 1.8;
+            letter-spacing: 1px;
+        }
+        .blink-triangle {
             align-self: flex-end;
-            padding: 8px 20px;
-            background: #ff9e9e;
-            border: none;
+            animation: blink 1s infinite;
+            font-size: 14px;
+        }
+        @keyframes blink { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+
+        #finish-btn {
+            position: absolute;
+            bottom: 35%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 30px;
+            background-color: #8d4a4a;
+            border: 2px solid #d3b89e;
             color: white;
             border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
+            z-index: 4;
+            display: none;
+            font-family: inherit;
         }
     </style>
 </head>
@@ -147,164 +179,264 @@
             <h1>手のひらのナイショ話</h1>
             <div class="button-group">
                 <button class="menu-btn" onclick="startGame()">はじめから</button>
-                <button class="menu-btn" onclick="alert('セーブデータがありません')">つづきから</button>
+                <button class="menu-btn" onclick="alert('セーブデータはありません')">つづきから</button>
                 <button class="menu-btn" onclick="alert('設定項目はありません')">オプション</button>
             </div>
         </div>
 
-        <!-- ゲーム（ノベル＆描画）画面 -->
+        <!-- ゲーム画面 -->
         <div id="game-screen" class="screen">
-            <div id="canvas-container">
-                <canvas id="palm-canvas"></canvas>
-                <div id="instruction" style="display:none;">指で画面をなぞって文字を書いてみよう</div>
+            <canvas id="canvas-layer"></canvas>
+            
+            <div id="gauge-container">
+                <div id="gauge-bar"></div>
             </div>
-            <div id="message-box">
+            <div id="gauge-text">相手の限界ゲージ</div>
+
+            <button id="finish-btn" onclick="finishFinalDraw()">書き終える</button>
+
+            <div id="message-box" onclick="advanceText()">
                 <p id="message-text"></p>
-                <button id="next-btn" class="action-btn" style="display:none;" onclick="nextMessage()">次へ ▼</button>
-                <button id="finish-draw-btn" class="action-btn" style="display:none;" onclick="finishDrawing()">書き終わる</button>
+                <div class="blink-triangle" id="next-mark">▼</div>
             </div>
         </div>
     </div>
 
     <script>
-        // 前半のシナリオ
-        const introMessages = [
-            "放課後の教室。幼馴染の彼と二人きり。",
-            "「昔、よくやったよな。手のひらに文字書いて当てるやつ」",
-            "そう言って、彼は私の前に、無防備に手のひらを差し出した。",
-            "（……よし、何か書いてみよう）"
-        ];
-        
-        // 後半のシナリオ
-        const outroMessages = [
-            "「……ん、くすぐったい」",
-            "「えーっと、今の文字は……」",
-            "「……本当に、それがお前の言いたいこと？」",
-            "赤くなった顔を少し逸らして、彼は照れくさそうに笑った。"
-        ];
+        // --- シナリオデータ ---
+        const scenarios = {
+            day1_intro: [
+                "夕食の片付けも終わり、暖炉の火がパチパチと心地よい音を立てている。",
+                "「……ほら、手。貸して」",
+                "日課となっているマッサージ。幼馴染の彼は、少し照れくさそうにゴツゴツした手のひらを差し出した。",
+                "親指でゆっくりとほぐしていると、ふと、伝えられない想いが胸に込み上げてきた。",
+                "（……このまま、手のひらに文字を書いたら、伝わるかな）",
+                "【指で画面をなぞって、文字を書いてみよう】"
+            ],
+            day1_fail: [
+                "「……っ、ちょ、待て！」",
+                "ビクッと肩を揺らし、彼は慌てて手を引っ込めた。",
+                "「くすぐったいって！ 何書いてるか全然わからなかったぞ……」",
+                "どうやら、ゆっくり書いている間に消えてしまったらしい。明日の夜、もう一度試してみよう……。"
+            ],
+            day2_intro: [
+                "翌日の夜。",
+                "今日も食後、暖炉の前で彼の手をマッサージする時間がやってきた。",
+                "「……昨日みたいに、くすぐったくすんなよ？」",
+                "警戒しつつも手を預けてくれる彼。",
+                "（今日こそ、少しでも伝わるように……早く、でも丁寧に書こう）"
+            ],
+            day2_fail: [
+                "「あーっ！ もう限界、ギブ！！」",
+                "またしても手を引っ込められてしまった。",
+                "「お前、絶対わざとやってるだろ！ 手のひらは敏感なんだってば……」",
+                "赤くなった顔で睨まれる。もどかしい。伝わらないまま、また夜が更けていく……。"
+            ],
+            day3_intro: [
+                "さらに数日後の夜。",
+                "「……」",
+                "今日は無言のまま、彼からすっと手のひらを差し出してきた。",
+                "「……今日は、逃げないから。くすぐったくても我慢する」",
+                "「お前が何書きたいのか、ちゃんと知りたいから……教えてくれよ」",
+                "彼の真剣な眼差し。",
+                "（……今なら、きっと全部伝わる）",
+                "【ゆっくりと、あなたの想いを書いてください】"
+            ],
+            day3_outro: [
+                "書き終え、そっと指を離す。",
+                "彼はじっと自分の手のひらを見つめ……やがて、耳まで真っ赤に染め上げた。",
+                "「……っ、ばか」",
+                "「……そういう大事なことは、文字じゃなくて、ちゃんと声に出して言えよ」",
+                "そう言いながらも、彼は握りしめたその手を、愛おしそうに自分の胸に押し当てた。",
+                "〜 プレイありがとうございました 〜"
+            ]
+        };
 
-        let msgIndex = 0;
+        // --- ゲーム状態管理 ---
+        let currentDay = 1;
+        let phase = 'title'; // 'title', 'text', 'draw'
+        let textQueue = [];
         let isDrawing = false;
-        let currentScenario = 'intro';
+        let gauge = 0;
+        let isFinalDay = false;
         
-        const canvas = document.getElementById('palm-canvas');
+        // --- キャンバス設定 ---
+        const canvas = document.getElementById('canvas-layer');
         const ctx = canvas.getContext('2d');
+        const gaugeContainer = document.getElementById('gauge-container');
+        const gaugeBar = document.getElementById('gauge-bar');
+        const gaugeText = document.getElementById('gauge-text');
+        const msgBox = document.getElementById('message-box');
+        const msgText = document.getElementById('message-text');
+        const nextMark = document.getElementById('next-mark');
+        const finishBtn = document.getElementById('finish-btn');
 
-        // キャンバスのサイズを画面に合わせる
         function resizeCanvas() {
-            canvas.width = canvas.parentElement.clientWidth;
-            canvas.height = canvas.parentElement.clientHeight;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            // 背景を肌色で塗りつぶす
+            ctx.fillStyle = '#f4d5b6';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        // ゲーム開始
+        // --- ゲーム進行制御 ---
         function startGame() {
             document.getElementById('title-screen').classList.remove('active');
             document.getElementById('game-screen').classList.add('active');
             resizeCanvas();
-            showMessage();
+            startDay(1);
+            requestAnimationFrame(gameLoop);
         }
 
-        // メッセージの表示制御
-        function showMessage() {
-            const nextBtn = document.getElementById('next-btn');
-            const finishBtn = document.getElementById('finish-draw-btn');
-            const instruction = document.getElementById('instruction');
-            const msgText = document.getElementById('message-text');
+        function startDay(day) {
+            currentDay = day;
+            gauge = 0;
+            isFinalDay = (day === 3);
+            
+            ctx.fillStyle = '#f4d5b6';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            if (currentScenario === 'intro') {
-                if (msgIndex < introMessages.length) {
-                    msgText.innerText = introMessages[msgIndex];
-                    nextBtn.style.display = 'block';
-                } else {
-                    // お絵かきモードへ移行
-                    msgText.innerText = "（相手の手のひらをなぞって、文字を書いてください）";
-                    nextBtn.style.display = 'none';
-                    finishBtn.style.display = 'block';
-                    instruction.style.display = 'block';
-                    setupDrawing();
-                }
-            } else if (currentScenario === 'outro') {
-                if (msgIndex < outroMessages.length) {
-                    msgText.innerText = outroMessages[msgIndex];
-                    nextBtn.style.display = 'block';
-                } else {
-                    msgText.innerText = "〜 プレイありがとうございます 〜";
-                    nextBtn.style.display = 'none';
+            if (day === 1) playText(scenarios.day1_intro, () => startDrawPhase());
+            if (day === 2) playText(scenarios.day2_intro, () => startDrawPhase());
+            if (day === 3) playText(scenarios.day3_intro, () => startDrawPhase());
+        }
+
+        // --- テキストシステム ---
+        let textCallback = null;
+        function playText(texts, callback) {
+            phase = 'text';
+            textQueue = [...texts];
+            textCallback = callback;
+            msgBox.style.display = 'flex';
+            gaugeContainer.style.display = 'none';
+            gaugeText.style.display = 'none';
+            showNextText();
+        }
+
+        function showNextText() {
+            if (textQueue.length > 0) {
+                msgText.innerText = textQueue.shift();
+            } else {
+                if (textCallback) textCallback();
+            }
+        }
+
+        function advanceText() {
+            if (phase === 'text') {
+                showNextText();
+            }
+        }
+
+        // --- お絵かき（マッサージ）システム ---
+        function startDrawPhase() {
+            phase = 'draw';
+            msgBox.style.display = 'none'; // 文字を書く時はメッセージ枠を消す
+            
+            if (!isFinalDay) {
+                gaugeContainer.style.display = 'block';
+                gaugeText.style.display = 'block';
+                gaugeBar.style.width = '0%';
+            } else {
+                // 最終日は「書き終える」ボタンを表示
+                finishBtn.style.display = 'block';
+            }
+        }
+
+        // 座標取得
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function handleStart(e) {
+            if (phase !== 'draw') return;
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            // 最終日ははっきりとした色、それまでは少しぼやけた色
+            ctx.strokeStyle = isFinalDay ? 'rgba(180, 70, 70, 0.8)' : 'rgba(200, 100, 100, 0.5)';
+        }
+
+        function handleMove(e) {
+            if (!isDrawing || phase !== 'draw') return;
+            e.preventDefault();
+            const pos = getPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+
+            // 1,2日目は触っている間にゲージ上昇
+            if (!isFinalDay) {
+                // 2日目はゲージ上昇が早い（難易度アップ）
+                gauge += (currentDay === 1) ? 0.8 : 1.2; 
+                gaugeBar.style.width = gauge + '%';
+
+                if (gauge >= 100) {
+                    failDay();
                 }
             }
         }
 
-        function nextMessage() {
-            msgIndex++;
-            showMessage();
+        function handleEnd(e) {
+            if (isDrawing) {
+                e.preventDefault();
+                isDrawing = false;
+            }
         }
 
-        // スマホ・PC両対応のお絵かき機能
-        function setupDrawing() {
-            ctx.lineWidth = 6;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = 'rgba(255, 120, 120, 0.4)'; // 肌になぞったような薄い赤
+        // PCとスマホのイベント登録（passive:falseでスクロール防止を確実にする）
+        canvas.addEventListener('mousedown', handleStart, {passive: false});
+        canvas.addEventListener('mousemove', handleMove, {passive: false});
+        canvas.addEventListener('mouseup', handleEnd, {passive: false});
+        canvas.addEventListener('mouseleave', handleEnd, {passive: false});
 
-            // タップ・クリックされた座標を取得
-            const getPos = (e) => {
-                const rect = canvas.getBoundingClientRect();
-                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                return { x: clientX - rect.left, y: clientY - rect.top };
-            };
+        canvas.addEventListener('touchstart', handleStart, {passive: false});
+        canvas.addEventListener('touchmove', handleMove, {passive: false});
+        canvas.addEventListener('touchend', handleEnd, {passive: false});
 
-            const startDraw = (e) => { 
-                e.preventDefault(); 
-                isDrawing = true; 
-                const pos = getPos(e); 
-                ctx.beginPath(); 
-                ctx.moveTo(pos.x, pos.y); 
-            };
-            
-            const draw = (e) => { 
-                if (!isDrawing) return; 
-                e.preventDefault(); 
-                const pos = getPos(e); 
-                ctx.lineTo(pos.x, pos.y); 
-                ctx.stroke(); 
-            };
-            
-            const stopDraw = (e) => { 
-                if (isDrawing) { 
-                    e.preventDefault(); 
-                    isDrawing = false; 
-                } 
-            };
+        // --- メインループ（線のフェードアウト処理） ---
+        function gameLoop() {
+            if (phase === 'draw' && !isFinalDay) {
+                // 肌色を極薄く重ね塗りし続けることで、書いた線が体温で消えていく「もどかしさ」を表現
+                ctx.fillStyle = 'rgba(244, 213, 182, 0.03)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // PC用イベント
-            canvas.addEventListener('mousedown', startDraw);
-            canvas.addEventListener('mousemove', draw);
-            canvas.addEventListener('mouseup', stopDraw);
-            canvas.addEventListener('mouseleave', stopDraw);
-
-            // スマホ用イベント
-            canvas.addEventListener('touchstart', startDraw, {passive: false});
-            canvas.addEventListener('touchmove', draw, {passive: false});
-            canvas.addEventListener('touchend', stopDraw, {passive: false});
+                // 触っていない時は少しずつゲージ（火照り）が冷める
+                if (!isDrawing && gauge > 0) {
+                    gauge -= 0.2;
+                    gaugeBar.style.width = gauge + '%';
+                }
+            }
+            requestAnimationFrame(gameLoop);
         }
 
-        // 書き終わった後の処理
-        function finishDrawing() {
+        // --- 日数遷移 ---
+        function failDay() {
             isDrawing = false;
+            phase = 'text';
+            gaugeContainer.style.display = 'none';
+            gaugeText.style.display = 'none';
             
-            // イベントリスナーを削除してこれ以上書けないようにする（キャンバスのクローンを作成して置換）
-            const newCanvas = canvas.cloneNode(true);
-            canvas.parentNode.replaceChild(newCanvas, canvas);
-            // 描画内容は消えちゃうので、元のctxの内容を新しいcanvasにコピー
-            newCanvas.getContext('2d').drawImage(canvas, 0, 0);
+            if (currentDay === 1) {
+                playText(scenarios.day1_fail, () => startDay(2));
+            } else if (currentDay === 2) {
+                playText(scenarios.day2_fail, () => startDay(3));
+            }
+        }
 
-            document.getElementById('instruction').style.display = 'none';
-            document.getElementById('finish-draw-btn').style.display = 'none';
-            
-            // 後半のシナリオへ
-            currentScenario = 'outro';
-            msgIndex = 0;
-            showMessage();
+        function finishFinalDraw() {
+            isDrawing = false;
+            finishBtn.style.display = 'none';
+            playText(scenarios.day3_outro, () => {
+                nextMark.style.display = 'none'; // 最後は▼を消す
+            });
         }
     </script>
 </body>

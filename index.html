@@ -46,7 +46,6 @@
             display: flex;
         }
 
-        /* ゲーム画面は背景なし（キャンバスが見えるように） */
         #game-screen {
             background: none;
         }
@@ -59,14 +58,30 @@
             letter-spacing: 2px;
         }
 
-        /* エンディングバッジ */
+        /* エンディングバッジボックス */
+        #badge-box {
+            background-color: rgba(26, 21, 21, 0.85);
+            border: 2px solid #d3b89e;
+            border-radius: 8px;
+            padding: 15px;
+            width: 80%;
+            margin-bottom: 30px;
+            box-sizing: border-box;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        }
+        .badge-box-title {
+            color: #f4d5b6;
+            text-align: center;
+            font-size: 16px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
+        }
         #badge-container {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
             gap: 10px;
-            width: 80%;
-            margin-bottom: 40px;
         }
         .badge {
             width: 30px;
@@ -124,7 +139,6 @@
             transform: scale(0.95);
         }
 
-        /* 遊び方画面のテキスト */
         .instruction-text {
             color: #f4d5b6;
             width: 85%;
@@ -163,7 +177,6 @@
             transition: width 0.1s;
         }
 
-        /* 残り画数表示 */
         #stroke-counter {
             position: absolute;
             top: 40px;
@@ -175,6 +188,36 @@
             z-index: 2;
             display: none;
             text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
+        }
+
+        /* 制限時間タイマー */
+        #time-counter {
+            position: absolute;
+            top: 65px;
+            width: 100%;
+            text-align: center;
+            color: #8d4a4a;
+            font-weight: bold;
+            font-size: 16px;
+            z-index: 2;
+            display: none;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
+        }
+
+        /* 警告テキスト */
+        #warning-text {
+            position: absolute;
+            top: 35%;
+            width: 100%;
+            text-align: center;
+            color: #d35400;
+            font-size: 24px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.5s;
+            text-shadow: 0px 0px 8px rgba(255,255,255,0.9);
+            pointer-events: none;
+            z-index: 10;
         }
 
         #choice-overlay {
@@ -271,8 +314,11 @@
         <!-- タイトル画面 -->
         <div id="title-screen" class="screen active">
             <h1>手のひらのナイショ話</h1>
-            <div id="badge-container">
-                <!-- JSでバッジを生成 -->
+            <div id="badge-box">
+                <div class="badge-box-title">獲得エンディングバッジ</div>
+                <div id="badge-container">
+                    <!-- JSでバッジを生成 -->
+                </div>
             </div>
             <div class="button-group">
                 <button class="menu-btn" onclick="startGame()">はじめから</button>
@@ -285,9 +331,9 @@
             <h1>遊び方</h1>
             <div class="instruction-text">
                 <p>① 毎日、書きたい言葉（難易度）を選びます。</p>
-                <p>② 指で画面をなぞって文字を書きます。</p>
-                <p>③ 相手の限界ゲージがMAXになる前に「目標画数」なぞると成功！</p>
-                <p>④ 難易度が高いほど好感度が上がります。</p>
+                <p>② 指で画面をなぞって、<strong>手を離した時</strong>に1画とカウントされます。</p>
+                <p>③ 制限時間内に「目標画数」をすべて書き終えると成功！</p>
+                <p>④ 難易度（画数）が高いほど好感度が上がります。</p>
                 <p>★ エンディングは全部で９種類。特定の選択肢を選び続けると特別な結末が…？</p>
             </div>
             <div class="button-group">
@@ -303,9 +349,11 @@
 
             <div id="gauge-container"><div id="gauge-bar"></div></div>
             <div id="stroke-counter">残り: 0 画</div>
+            <div id="time-counter">残り時間: 0.0秒</div>
+            <div id="warning-text">「ふふ、くすぐったい」</div>
 
             <div id="choice-overlay">
-                <div class="choice-hint">※画数が多いほど難しく、好感度が上がります</div>
+                <div class="choice-hint">※画数が多いほど制限時間が長く、好感度も上がります</div>
                 <div class="button-group" id="choices-container"></div>
             </div>
 
@@ -352,7 +400,6 @@
             }
         }
 
-        // --- UI画面の切り替え ---
         function showTitle() {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('title-screen').classList.add('active');
@@ -364,63 +411,182 @@
             document.getElementById('how-to-screen').classList.add('active');
         }
 
-        // 初期化実行
         renderBadges();
 
-        // --- シナリオ・選択肢データ ---
-        // ※ 難易度(diff): 0=易しい(特別ルートA用), 1=普通(特別ルートB用), 2=難しい(特別ルートC用)
+        // --- シナリオ・選択肢データ（実際の画数に準拠、長文テキスト復活・ダミー追加） ---
         const dailyData = [
             {
                 day: 1, label: "１日目",
-                intro: ["夕食後の穏やかな時間。パチパチと暖炉の火が爆ぜる音が部屋に響いている。","（ダミーテキスト：ここからご自身の文章に）","「……ほら、手。貸して」","彼の手のひらに、なんて書いてみよう？"],
-                choices: [
-                    { text: "「あ」", req: 40, reward: 1, diff: 0 },
-                    { text: "「ねえ」", req: 80, reward: 2, diff: 1 },
-                    { text: "「おつかれ」", req: 140, reward: 3, diff: 2 }
+                intro: [
+                    "夕食後の穏やかな時間。パチパチと暖炉の火が爆ぜる音が部屋に響いている。",
+                    "（ダミーテキスト：ここからご自身の文章に書き換えてください）",
+                    "今日は少し冷え込む夜だった。こんな日は、いつも以上に火の温もりがありがたい。",
+                    "彼と私は、幼い頃からずっとこんな風に一緒に過ごしてきた。",
+                    "昔はただの遊び相手だったのに、いつの間にか私にとって特別な存在になっている。",
+                    "だけど、その気持ちを言葉にするのは、どうしても怖くて……。",
+                    "「……ほら、手。貸して」",
+                    "日課となっているマッサージ。彼はいつも通り、無防備に手のひらを差し出した。",
+                    "ゴツゴツとした、少し大きくなったその手を両手で包み込む。",
+                    "親指でゆっくりとほぐしていると、ふと、胸の奥で燻っていた想いが込み上げてきた。",
+                    "声に出せないなら、せめて……。",
+                    "（……この手に、文字を書いてみたら、少しは伝わるかな？）",
+                    "（手始めに、なんて書いてみよう？）"
                 ],
-                success: ["「……ん。なんか、悪くないな」","（少しだけ、想いが伝わった気がする）"],
-                fail: ["「っ、ちょ！ くすぐったい！」","彼に手を引っ込められてしまった……。"]
+                choices: [
+                    { text: "「あ」", req: 3, reward: 1, diff: 0 },
+                    { text: "「ねえ」", req: 6, reward: 2, diff: 1 },
+                    { text: "「おつかれ」", req: 9, reward: 3, diff: 2 }
+                ],
+                success: [
+                    "「……ん。なんか、悪くないな」",
+                    "（ダミーテキスト：ここからご自身の文章に書き換えてください）",
+                    "彼は不思議そうな顔をしながらも、嫌がる素振りは見せなかった。",
+                    "指先から伝わる彼の体温が、私の手にもじんわりと移ってくるようだ。",
+                    "もう少しだけ長く触れていたかったけれど、今日はここまでにしよう。",
+                    "（少しだけ、私の気持ちが伝わったような気がする）",
+                    "（ダミーテキスト：1日目成功の終わりの文章を追加できます）"
+                ],
+                fail: [
+                    "「っ、ちょ！ くすぐったい！」",
+                    "（ダミーテキスト：ここからご自身の文章に書き換えてください）",
+                    "ビクッと肩を揺らし、彼は慌てて手を引っ込めてしまった。",
+                    "「急に変な触り方すんなよ。びっくりするだろ……」",
+                    "少しムスッとした顔で、彼は自分の手のひらを擦っている。",
+                    "どうやら、ゆっくり書きすぎてただくすぐったかっただけのようだ。",
+                    "（焦りすぎたかな……。また明日、試してみよう）",
+                    "（ダミーテキスト：1日目失敗の終わりの文章を追加できます）"
+                ]
             },
             {
                 day: 2, label: "２日目",
-                intro: ["翌日の夜。","「……あんま、くすぐったくすんなよ」","警戒しつつも彼が手を預けてくれた。","（今日はなんて書こう？）"],
-                choices: [
-                    { text: "「い」", req: 40, reward: 1, diff: 0 },
-                    { text: "「いつも」", req: 90, reward: 2, diff: 1 },
-                    { text: "「きもちいい？」", req: 150, reward: 3, diff: 2 }
+                intro: [
+                    "（ダミーテキスト：ここからご自身の文章に書き換えてください）",
+                    "翌日の夜。",
+                    "昨日のことがあったからか、彼は少しだけ警戒しているように見えた。",
+                    "それでも、夕食が終わると自然な流れで隣に座り、手を差し出してくれる。",
+                    "「……あんま、くすぐったくすんなよ」",
+                    "「わかってるってば」",
+                    "そう言い返しながら、私は再び彼の手を握った。",
+                    "昨日よりも少しだけ、脈が早い気がするのは気のせいだろうか。",
+                    "（今日はもう少しだけ、踏み込んだことを書いてみようかな）"
                 ],
-                success: ["「……お前、手あったかいな」","彼の顔が少しだけ赤くなった。"],
-                fail: ["「あーっ！ もう限界！」","やっぱりまだ難しかったみたいだ……。"]
+                choices: [
+                    { text: "「い」", req: 2, reward: 1, diff: 0 },
+                    { text: "「いつも」", req: 6, reward: 2, diff: 1 },
+                    { text: "「きもちいい」", req: 14, reward: 3, diff: 2 }
+                ],
+                success: [
+                    "「……お前、手あったかいな」",
+                    "（ダミーテキスト：ここからご自身の文章に書き換えてください）",
+                    "ぽつりと呟いた彼の顔が、暖炉の火のせいだけではなく赤く見える。",
+                    "なんだかお互いに無言になってしまって、少しだけ気まずい。",
+                    "でも、この気まずさは決して嫌なものではなかった。",
+                    "（文字の意味、どこまでわかってくれたんだろう……）",
+                    "（ダミーテキスト：2日目成功の終わりの文章を追加できます）"
+                ],
+                fail: [
+                    "「あーっ！ もう限界！」",
+                    "（ダミーテキスト：ここからご自身の文章に書き換えてください）",
+                    "またしても手を引っ込められてしまった。",
+                    "「お前、絶対わざとやってるだろ……手のひらは敏感なんだってば」",
+                    "「ご、ごめんって」",
+                    "やっぱりまだ長文を書くのは難しかったみたいだ。",
+                    "（次こそは、ちゃんと書き切りたいな……）",
+                    "（ダミーテキスト：2日目失敗の終わりの文章を追加できます）"
+                ]
             },
             {
                 day: 3, label: "３日目",
-                intro: ["３日目。","彼から無言で手が差し出される。","（今日は少し長めに書いてみようかな……？）"],
-                choices: [
-                    { text: "「し」", req: 40, reward: 1, diff: 0 },
-                    { text: "「がんばれ」", req: 100, reward: 2, diff: 1 },
-                    { text: "「ありがとう」", req: 160, reward: 3, diff: 2 }
+                intro: [
+                    "（ダミーテキスト：ここからご自身の文章に書き換えてください）",
+                    "３日目の夜。",
+                    "今日は彼の方から何も言わず、無言で手が差し出された。",
+                    "その仕草が少しだけ不器用で、なんだか可愛らしく思えてしまう。",
+                    "「……ん」",
+                    "彼の手を握ると、昨日よりも少しだけ手に力が入っているのがわかった。",
+                    "どうやら、彼なりにマッサージの時間を心待ちにしてくれているらしい。",
+                    "（今日は、少し長めに書いてみようかな……？）"
                 ],
-                success: ["「……もっと、続けてもいいぞ」","少しずつ、彼も楽しんでくれている。"],
-                fail: ["「……っ、ん、やっぱ無理！！」","変に力を入れてしまって失敗した……。"]
+                choices: [
+                    { text: "「し」", req: 1, reward: 1, diff: 0 },
+                    { text: "「がんばれ」", req: 13, reward: 2, diff: 1 },
+                    { text: "「ありがとう」", req: 14, reward: 3, diff: 2 }
+                ],
+                success: [
+                    "「……もっと、続けてもいいぞ」",
+                    "（ダミーテキスト：ここからご自身の文章に書き換えてください）",
+                    "そっぽを向きながら、彼が小さな声で言った。",
+                    "その言葉に、胸の奥がぎゅっと締め付けられる。",
+                    "少しずつ、彼もこの時間を特別なものだと感じてくれているのかもしれない。",
+                    "（明日も、こうして一緒にいられますように……）",
+                    "（ダミーテキスト：3日目成功の終わりの文章を追加できます）"
+                ],
+                fail: [
+                    "「……っ、ん、やっぱ無理！！」",
+                    "（ダミーテキスト：ここからご自身の文章に書き換えてください）",
+                    "変に力を入れてしまって、またしても失敗してしまった。",
+                    "「なんだよ今日のマッサージ。全然リラックスできねぇ」",
+                    "文句を言いながらも、彼はどこか楽しそうに笑っている。",
+                    "（もどかしいけど……このやり取りも、悪くないかも）",
+                    "（ダミーテキスト：3日目失敗の終わりの文章を追加できます）"
+                ]
             },
             {
                 day: 4, label: "４日目",
-                intro: ["４日目。","「……最近、お前のマッサージがないと落ち着かないかも」","（今日こそ、もっと踏み込んだ言葉を……）"],
-                choices: [
-                    { text: "「て」", req: 50, reward: 1, diff: 0 },
-                    { text: "「あしたも」", req: 110, reward: 2, diff: 1 },
-                    { text: "「ずっといっしょ」", req: 180, reward: 3, diff: 2 }
+                intro: [
+                    "（ダミーテキスト：ここからご自身の文章に書き換えてください）",
+                    "４日目。",
+                    "「……最近、お前のマッサージがないと落ち着かないかも」",
+                    "ぽつりと零した彼の言葉に、私は思わず手をとめてしまった。",
+                    "「……そ、そう？」",
+                    "「ああ。なんか、一日が終わったって気がするんだよな」",
+                    "無自覚にそんなことを言える彼が、少しだけ恨めしい。",
+                    "私の方は、この時間が来るたびにドキドキして心臓が破裂しそうなのに。",
+                    "（今日こそ、もっと踏み込んだ言葉を……）"
                 ],
-                success: ["「……ん。なんか、すごく落ち着く」","確かな温もりが伝わってきた。"],
-                fail: ["「あーもう、ごめん！ 限界！！」","あともう少しだったのに……！"]
+                choices: [
+                    { text: "「て」", req: 1, reward: 1, diff: 0 },
+                    { text: "「あしたも」", req: 11, reward: 2, diff: 1 },
+                    { text: "「ずっといっしょ」", req: 13, reward: 3, diff: 2 }
+                ],
+                success: [
+                    "「……ん。なんか、すごく落ち着く」",
+                    "（ダミーテキスト：ここからご自身の文章に書き換えてください）",
+                    "手のひらを通じて、確かな温もりが伝わってくる。",
+                    "彼の鼓動が、私の指先を伝って直接響いてくるような錯覚に陥った。",
+                    "あと少し。あと少しだけ言葉を紡げば、この関係は変わるかもしれない。",
+                    "（いよいよ明日は、一番伝えたいことを書こう……）",
+                    "（ダミーテキスト：4日目成功の終わりの文章を追加できます）"
+                ],
+                fail: [
+                    "「あーもう、ごめん！ 限界！！」",
+                    "（ダミーテキスト：ここからご自身の文章に書き換えてください）",
+                    "あともう少しだったのに、彼は頭を抱えてしゃがみこんでしまった。",
+                    "「……お前が何したいのか、わかんねぇよ……」",
+                    "彼の耳は真っ赤に染まっている。",
+                    "（ごめんね。でも、明日こそは……絶対に伝えるから）",
+                    "（ダミーテキスト：4日目失敗の終わりの文章を追加できます）"
+                ]
             },
             {
                 day: 5, label: "最終日",
-                intro: ["５日目。","「……今日は、逃げない。だから……」","「お前が何書きたいのか、ちゃんと知りたい。教えてくれ」","（今なら、きっと伝わる。彼の手のひらに、なんて書こう……？）"],
+                intro: [
+                    "（ダミーテキスト：ここからご自身の文章に書き換えてください）",
+                    "そして、５日目の夜。",
+                    "いつもと同じ暖炉の火。いつもと同じ椅子。",
+                    "だけど、今日だけは空気が少し違っていた。",
+                    "彼が私の目を真っ直ぐに見つめ、ぎゅっと一度手を握り、そして開いた。",
+                    "「……今日は、逃げない。だから……」",
+                    "「お前が何書きたいのか、ちゃんと知りたい。教えてくれ」",
+                    "彼の真剣な眼差しに、私はごくりと息を飲んだ。",
+                    "もう誤魔化しはきかない。彼も、私が何かを伝えようとしていることに気づいている。",
+                    "（今なら、きっと伝わる）",
+                    "（彼の手のひらに、私の本当の想いを……なんて書こう？）"
+                ],
                 choices: [
-                    { text: "「る」", req: 60, reward: 2, diff: 0 },
-                    { text: "「だいすき」", req: 120, reward: 4, diff: 1 },
-                    { text: "「あいしてる」", req: 200, reward: 6, diff: 2 }
+                    { text: "「る」", req: 1, reward: 2, diff: 0 },
+                    { text: "「だいすき」", req: 15, reward: 4, diff: 1 },
+                    { text: "「あいしてる」", req: 8, reward: 6, diff: 2 }
                 ]
             }
         ];
@@ -442,21 +608,29 @@
         let phase = 'title'; 
         let textQueue = [];
         let isDrawing = false;
-        let gauge = 0;
+        let hasMovedInStroke = false;
         let drawPoints = 0;
-        let choiceHistory = []; // { diff: number, success: boolean }
+        let choiceHistory = []; 
         
         let playerAffection = 0;
         let currentTargetReq = 0;
         let currentReward = 0;
         let currentDiff = 0;
+
+        // 制限時間関連
         let isGameLoopRunning = false;
+        let lastTime = 0;
+        let totalTimeLimit = 0;
+        let timeRemaining = 0;
+        let warningShown = false;
 
         const canvas = document.getElementById('canvas-layer');
         const ctx = canvas.getContext('2d');
         const gaugeContainer = document.getElementById('gauge-container');
         const gaugeBar = document.getElementById('gauge-bar');
         const strokeCounter = document.getElementById('stroke-counter');
+        const timeCounter = document.getElementById('time-counter');
+        const warningText = document.getElementById('warning-text');
         const msgBox = document.getElementById('message-box');
         const msgText = document.getElementById('message-text');
         const nextMark = document.getElementById('next-mark');
@@ -490,11 +664,12 @@
         }
 
         function startDay() {
-            gauge = 0;
             drawPoints = 0;
             currentTargetReq = 0;
             currentReward = 0;
             strokeCounter.style.display = 'none';
+            timeCounter.style.display = 'none';
+            warningText.style.opacity = '0';
             ctx.fillStyle = '#f4d5b6';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -519,6 +694,7 @@
             gaugeContainer.style.display = 'none';
             finishBtn.style.display = 'none';
             strokeCounter.style.display = 'none';
+            timeCounter.style.display = 'none';
             nextMark.style.display = 'block';
             showNextText();
         }
@@ -561,8 +737,18 @@
             phase = 'draw';
             gaugeContainer.style.display = 'block';
             gaugeBar.style.width = '0%';
-            strokeCounter.innerText = `目標まであと: ${currentTargetReq} 画`;
+            
+            strokeCounter.innerText = `残り: ${currentTargetReq} 画`;
             strokeCounter.style.display = 'block';
+            
+            // 目標画数に応じて制限時間を算出（1画につき1.5秒 + 猶予4秒）
+            totalTimeLimit = currentTargetReq * 1500 + 4000;
+            timeRemaining = totalTimeLimit;
+            warningShown = false;
+            lastTime = performance.now();
+
+            timeCounter.innerText = `残り時間: ${(timeRemaining / 1000).toFixed(1)}秒`;
+            timeCounter.style.display = 'block';
         }
 
         function getPos(e) {
@@ -576,6 +762,7 @@
             if (phase !== 'draw') return;
             e.preventDefault();
             isDrawing = true;
+            hasMovedInStroke = false;
             const pos = getPos(e);
             ctx.beginPath();
             ctx.moveTo(pos.x, pos.y);
@@ -588,23 +775,27 @@
         function handleMove(e) {
             if (!isDrawing || phase !== 'draw') return;
             e.preventDefault();
+            hasMovedInStroke = true;
             const pos = getPos(e);
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
-
-            drawPoints++;
-            let remaining = Math.max(0, currentTargetReq - drawPoints);
-            strokeCounter.innerText = `目標まであと: ${remaining} 画`;
-
-            if (remaining === 0) {
-                finishBtn.style.display = 'block';
-            }
         }
 
         function handleEnd(e) {
-            if (isDrawing) {
+            if (isDrawing && phase === 'draw') {
                 e.preventDefault();
                 isDrawing = false;
+                
+                // 指を離した時に画数を1追加（タップだけでも少し動けばOK）
+                if (hasMovedInStroke) {
+                    drawPoints++;
+                    let remaining = Math.max(0, currentTargetReq - drawPoints);
+                    strokeCounter.innerText = `残り: ${remaining} 画`;
+
+                    if (remaining === 0) {
+                        finishBtn.style.display = 'block';
+                    }
+                }
             }
         }
 
@@ -616,24 +807,38 @@
         canvas.addEventListener('touchmove', handleMove, {passive: false});
         canvas.addEventListener('touchend', handleEnd, {passive: false});
 
-        function gameLoop() {
+        function gameLoop(timestamp) {
             if (phase === 'draw') {
+                if (!lastTime) lastTime = timestamp;
+                let dt = timestamp - lastTime;
+                lastTime = timestamp;
+                timeRemaining -= dt;
+
+                let secs = Math.max(0, timeRemaining / 1000).toFixed(1);
+                timeCounter.innerText = `残り時間: ${secs}秒`;
+
+                // 時間の減少に連動してゲージ（相手の我慢ゲージ）が増加
+                let gaugePercent = ((totalTimeLimit - timeRemaining) / totalTimeLimit) * 100;
+                gaugeBar.style.width = gaugePercent + '%';
+
+                // 残り時間が4秒以下になったら警告テキスト表示（1度だけ）
+                if (timeRemaining <= 4000 && !warningShown) {
+                    warningShown = true;
+                    warningText.style.opacity = '1';
+                    setTimeout(() => { warningText.style.opacity = '0'; }, 2000); // 2秒で消える
+                }
+
+                if (timeRemaining <= 0) {
+                    failDrawPhase();
+                }
+
+                // 描いた線が薄れていく演出
                 ctx.fillStyle = 'rgba(244, 213, 182, 0.05)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                if (isDrawing) {
-                    const gaugeSpeed = (currentDayIdx === 4) ? 0.15 : 0.25;
-                    gauge += gaugeSpeed;
-                    gaugeBar.style.width = gauge + '%';
-
-                    if (gauge >= 100) {
-                        failDrawPhase();
-                    }
-                } else if (gauge > 0) {
-                    gauge -= 0.2;
-                    gaugeBar.style.width = gauge + '%';
-                }
+            } else {
+                lastTime = timestamp; // タイマーが飛ばないように更新
             }
+            
             if (isGameLoopRunning) {
                 requestAnimationFrame(gameLoop);
             }
@@ -644,6 +849,8 @@
             gaugeContainer.style.display = 'none';
             finishBtn.style.display = 'none';
             strokeCounter.style.display = 'none';
+            timeCounter.style.display = 'none';
+            warningText.style.opacity = '0';
             
             choiceHistory.push({ diff: currentDiff, success: false });
 
@@ -664,6 +871,8 @@
             gaugeContainer.style.display = 'none';
             finishBtn.style.display = 'none';
             strokeCounter.style.display = 'none';
+            timeCounter.style.display = 'none';
+            warningText.style.opacity = '0';
             
             choiceHistory.push({ diff: currentDiff, success: true });
             playerAffection += currentReward; 
@@ -688,17 +897,15 @@
                 return choiceHistory.length === 5 && choiceHistory.every(c => c.diff === targetDiff && c.success);
             };
 
-            // 分岐ロジック
             if (unlockedEndings.length === 8 && !unlockedEndings.includes(9)) {
-                earnedEndingId = 9; // Ending X (1〜8を全て見た後のプレイで強制移行)
+                earnedEndingId = 9; 
             } else if (isAllSuccess(0)) {
-                earnedEndingId = 6; // 特別ルートA (あ・い・し・て・る成功)
+                earnedEndingId = 6; 
             } else if (isAllSuccess(1)) {
-                earnedEndingId = 7; // 特別ルートB (中難易度すべて成功)
+                earnedEndingId = 7; 
             } else if (isAllSuccess(2)) {
-                earnedEndingId = 8; // 特別ルートC (高難易度すべて成功)
+                earnedEndingId = 8; 
             } else {
-                // 通常好感度ルート (1〜5)
                 if (playerAffection <= 3) earnedEndingId = 1;
                 else if (playerAffection <= 7) earnedEndingId = 2;
                 else if (playerAffection <= 11) earnedEndingId = 3;
@@ -708,50 +915,50 @@
 
             saveEnding(earnedEndingId);
 
-            // 共通テキスト
             resultText.push("（ダミーテキスト：ここからエンディングの文章です）");
             resultText.push("書き終え、そっと指を離す。");
+            resultText.push("彼は自分の手のひらを見つめ……やがて、私の手をぎゅっと握り返した。");
+            resultText.push("沈黙が落ちる。薪がパチッと音を立てた。");
 
-            // エンディングごとのテキスト（ダミー）
             if (earnedEndingId === 1) {
                 resultText.push("【ED 1: ほのぼの不器用エンド】");
-                resultText.push("「……お前、本当に不器用だよな」");
+                resultText.push("「……お前、本当に不器用だよな。正直なんて書いてたか全然わからなかったぞ」");
             } else if (earnedEndingId === 2) {
                 resultText.push("【ED 2: 優しい両思いエンド】");
-                resultText.push("「……何日かかけて、ようやくわかったよ」");
+                resultText.push("「……何日かかけて、ようやくわかったよ。不器用なりに伝えてくれてたんだな」");
             } else if (earnedEndingId === 3) {
                 resultText.push("【ED 3: ぴったりシンクロエンド】");
-                resultText.push("「お前の温もりが、まっすぐ心に入ってくるみたいだった」");
+                resultText.push("「お前の温もりが、まっすぐ心に入ってくるみたいだった。俺も、愛してる」");
             } else if (earnedEndingId === 4) {
                 resultText.push("【ED 4: 情熱的な甘やかしエンド】");
-                resultText.push("「……お前、わざと焦らしてただろ。我慢する身にもなれよ」");
+                resultText.push("「……わざと焦らしてただろ。俺ばっかり我慢させられて、ちょっと悔しい」");
             } else if (earnedEndingId === 5) {
                 resultText.push("【ED 5: 溺愛の極みエンド】");
-                resultText.push("「お前が愛おしすぎて、どうにかなりそう。……愛してるよ」");
+                resultText.push("「お前が愛おしすぎて、どうにかなりそう。……愛してるよ、世界で一番」");
             } else if (earnedEndingId === 6) {
                 resultText.push("【ED 6: 特別ルート「あいしてる」】");
-                resultText.push("「あ、い、し、て、る……だろ？ まったく、遠回りしやがって……」");
+                resultText.push("「あ、い、し、て、る……だろ？ まったく、1文字ずつ遠回りしやがって……」");
             } else if (earnedEndingId === 7) {
                 resultText.push("【ED 7: 特別ルート「中難易度コンプ」】");
                 resultText.push("「毎日、丁度いい言葉ばかり並べやがって。……俺も、同じ気持ちだよ」");
             } else if (earnedEndingId === 8) {
                 resultText.push("【ED 8: 特別ルート「高難易度コンプ」】");
-                resultText.push("「こんなに長い文字、よく毎日バレずに書けたな。……大好きだ」");
+                resultText.push("「こんなに長い文字、よく毎日バレずに書けたな。……大好きだ、バカ」");
             } else if (earnedEndingId === 9) {
                 resultText.push("【ED 9: Ending X】");
                 resultText.push("「すべての記憶を辿って、また俺の手を握ってくれたんだな。……ありがとう」");
             }
 
+            resultText.push("（ダミーテキスト：エンディングここまで）");
             resultText.push("〜 CLEAR！ プレイありがとうございました 〜");
 
-            // ヒントの抽出
             const lockedEndings = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(x => !unlockedEndings.includes(x));
             if (lockedEndings.length === 0) {
                 resultText.push("★全エンディングコンプリート！おめでとうございます！");
             } else {
                 let hintId;
                 if (lockedEndings.length === 1 && lockedEndings[0] === 9) {
-                    hintId = 9; // 残りが9だけなら9のヒントを表示
+                    hintId = 9; 
                 } else {
                     const availableHints = lockedEndings.filter(x => x !== 9);
                     hintId = availableHints[Math.floor(Math.random() * availableHints.length)];

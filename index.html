@@ -158,6 +158,19 @@
             z-index: 1;
         }
         
+        #gauge-label {
+            position: absolute;
+            top: 2px;
+            width: 100%;
+            text-align: center;
+            color: #8d4a4a;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 2;
+            display: none;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.7);
+        }
+
         #gauge-container {
             position: absolute;
             top: 20px;
@@ -347,6 +360,7 @@
             
             <div id="day-transition">１日目</div>
 
+            <div id="gauge-label">🐾 彼のくすぐったいゲージ 🐾</div>
             <div id="gauge-container"><div id="gauge-bar"></div></div>
             <div id="stroke-counter">残り: 0 画</div>
             <div id="time-counter">残り時間: 0.0秒</div>
@@ -626,6 +640,7 @@
 
         const canvas = document.getElementById('canvas-layer');
         const ctx = canvas.getContext('2d');
+        const gaugeLabel = document.getElementById('gauge-label');
         const gaugeContainer = document.getElementById('gauge-container');
         const gaugeBar = document.getElementById('gauge-bar');
         const strokeCounter = document.getElementById('stroke-counter');
@@ -667,6 +682,7 @@
             drawPoints = 0;
             currentTargetReq = 0;
             currentReward = 0;
+            gaugeLabel.style.display = 'none';
             strokeCounter.style.display = 'none';
             timeCounter.style.display = 'none';
             warningText.style.opacity = '0';
@@ -691,6 +707,7 @@
             textQueue = [...texts];
             window.textCallback = callback;
             msgBox.style.display = 'flex';
+            gaugeLabel.style.display = 'none';
             gaugeContainer.style.display = 'none';
             finishBtn.style.display = 'none';
             strokeCounter.style.display = 'none';
@@ -735,14 +752,15 @@
 
         function startDrawPhase() {
             phase = 'draw';
+            gaugeLabel.style.display = 'block';
             gaugeContainer.style.display = 'block';
             gaugeBar.style.width = '0%';
             
             strokeCounter.innerText = `残り: ${currentTargetReq} 画`;
             strokeCounter.style.display = 'block';
             
-            // 目標画数に応じて制限時間を算出（1画につき1.5秒 + 猶予4秒）
-            totalTimeLimit = currentTargetReq * 1500 + 4000;
+            // 制限時間を大幅に短縮（難易度アップ: 1画につき0.9秒 + 猶予1.5秒）
+            totalTimeLimit = currentTargetReq * 900 + 1500;
             timeRemaining = totalTimeLimit;
             warningShown = false;
             lastTime = performance.now();
@@ -846,6 +864,7 @@
 
         function failDrawPhase() {
             isDrawing = false;
+            gaugeLabel.style.display = 'none';
             gaugeContainer.style.display = 'none';
             finishBtn.style.display = 'none';
             strokeCounter.style.display = 'none';
@@ -868,6 +887,7 @@
 
         function completeDrawPhase() {
             isDrawing = false;
+            gaugeLabel.style.display = 'none';
             gaugeContainer.style.display = 'none';
             finishBtn.style.display = 'none';
             strokeCounter.style.display = 'none';

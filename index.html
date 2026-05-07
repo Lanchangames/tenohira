@@ -39,8 +39,8 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            /* グラデーションを少し柔らかく、肌や暖炉の温かみに寄せる */
-            background: radial-gradient(circle at center, #FFF9F5 0%, #FFF3E0 60%, #FFCCBC 100%);
+            /* 背景はグラデーションなしで、ポップであたたかみのある色に変更 */
+            background-color: #FFE0B2; 
         }
         .screen.active {
             display: flex;
@@ -50,14 +50,13 @@
             background: none;
         }
 
-        h1 {
-            color: #D84315;
-            /* 影を柔らかくしてフワッとした発光感に */
-            text-shadow: 0 3px 6px rgba(216, 67, 21, 0.2), 0 0 10px rgba(255, 255, 255, 0.8);
+        #title-logo {
+            width: 85%;
+            max-width: 320px;
+            height: auto;
             margin-bottom: 30px;
-            font-size: 28px;
-            letter-spacing: 2px;
-            font-weight: 900;
+            /* 元のタイトルのようなフワッとした発光感を画像にも付与 */
+            filter: drop-shadow(0 3px 6px rgba(216, 67, 21, 0.2)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.8));
         }
 
         #badge-box {
@@ -180,11 +179,17 @@
             display: none;
             text-shadow: 2px 2px 0px #FFF, 0 0 8px rgba(255,255,255,0.8);
             letter-spacing: 2px;
+            /* 文字数が多い時の改行対策 */
+            line-height: 1.4;
+            padding: 0 10px;
+            box-sizing: border-box;
+            word-break: keep-all;
+            overflow-wrap: break-word;
         }
         
         #gauge-label {
             position: absolute;
-            top: 55px; /* 下にずらす */
+            top: 75px; /* テキスト2行化に備えて少し下にずらす */
             width: 100%;
             text-align: center;
             color: #5D4037; /* 落ち着いた茶色に変更 */
@@ -197,7 +202,7 @@
 
         #gauge-container {
             position: absolute;
-            top: 80px; /* 下にずらす */
+            top: 100px; /* テキスト2行化に備えて少し下にずらす */
             left: 10%;
             width: 80%;
             height: 14px;
@@ -218,7 +223,7 @@
 
         #stroke-counter {
             position: absolute;
-            top: 105px; /* 下にずらす */
+            top: 125px; /* テキスト2行化に備えて少し下にずらす */
             width: 100%;
             text-align: center;
             color: #5D4037;
@@ -231,7 +236,7 @@
 
         #time-counter {
             position: absolute;
-            top: 130px; /* 下にずらす */
+            top: 150px; /* テキスト2行化に備えて少し下にずらす */
             width: 100%;
             text-align: center;
             color: #5D4037;
@@ -361,7 +366,7 @@
     <div id="game-container">
         <!-- タイトル画面 -->
         <div id="title-screen" class="screen active">
-            <h1>手のひらのナイショ話</h1>
+            <img src="title.png" alt="手のひらのナイショ話" id="title-logo">
             <div id="badge-box">
                 <div class="badge-box-title">獲得エンディングバッジ</div>
                 <div id="badge-container">
@@ -371,12 +376,14 @@
             <div class="button-group">
                 <button class="menu-btn" onclick="showHowTo()">遊び方</button>
                 <button class="menu-btn" onclick="startGame()">はじめから</button>
+                <button class="menu-btn" onclick="window.open('https://example.com/form', '_blank')">感想を送る</button>
             </div>
         </div>
 
         <!-- 遊び方画面 -->
         <div id="how-to-screen" class="screen">
-            <h1>遊び方</h1>
+            <!-- 遊び方画面でもロゴを使いたい場合はここに追加できます -->
+            <img src="title.png" alt="手のひらのナイショ話" id="title-logo" style="max-width: 200px; margin-bottom: 20px;">
             <div class="instruction-text">
                 <p>① 毎日、書きたい言葉（難易度）を選びます。</p>
                 <p>② 指で画面をなぞって、<strong>手を離した時</strong>に1画とカウントされます。</p>
@@ -805,8 +812,8 @@
             phase = 'draw';
             tickleGauge = 0;
             
-            // 指示テキストを選んだ文字に変更して表示
-            drawInstruction.innerText = `てのひらに ${currentChoiceText} と書こう`;
+            // 指示テキストを選んだ文字に変更して、<br>で自然な改行位置を作る
+            drawInstruction.innerHTML = `てのひらに<br>${currentChoiceText} と書こう`;
             drawInstruction.style.display = 'block';
             
             gaugeLabel.style.display = 'block';

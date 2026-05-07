@@ -697,6 +697,9 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
             
+            // ★修正ポイント：エンディング時に上書きされたクリックイベントを元に戻す
+            msgBox.onclick = advanceText;
+            
             playerAffection = 0;
             currentDayIdx = 0;
             choiceHistory = [];
@@ -1167,6 +1170,8 @@
             playText(resultText, () => {
                 nextMark.style.display = 'none'; 
                 msgBox.onclick = () => {
+                    // ★修正ポイント：次のプレイのためにクリックイベントを元に戻す
+                    msgBox.onclick = advanceText; 
                     showTitle();
                 };
             });

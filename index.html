@@ -631,12 +631,16 @@
         let currentReward = 0;
         let currentDiff = 0;
 
-        // 制限時間関連
+        // 制限時間関連とくすぐったいゲージ関連
         let isGameLoopRunning = false;
         let lastTime = 0;
         let totalTimeLimit = 0;
         let timeRemaining = 0;
         let warningShown = false;
+        
+        let tickleGauge = 0;
+        let lastPos = null;
+        let lastMoveTime = 0;
 
         const canvas = document.getElementById('canvas-layer');
         const ctx = canvas.getContext('2d');
@@ -682,7 +686,10 @@
             drawPoints = 0;
             currentTargetReq = 0;
             currentReward = 0;
+            
+            msgBox.style.display = 'none'; // 前のテキスト枠を残さない
             gaugeLabel.style.display = 'none';
+            gaugeContainer.style.display = 'none';
             strokeCounter.style.display = 'none';
             timeCounter.style.display = 'none';
             warningText.style.opacity = '0';
@@ -752,6 +759,7 @@
 
         function startDrawPhase() {
             phase = 'draw';
+            tickleGauge = 0;
             gaugeLabel.style.display = 'block';
             gaugeContainer.style.display = 'block';
             gaugeBar.style.width = '0%';
@@ -759,8 +767,8 @@
             strokeCounter.innerText = `残り: ${currentTargetReq} 画`;
             strokeCounter.style.display = 'block';
             
-            // 制限時間を大幅に短縮（難易度アップ: 1画につき0.9秒 + 猶予1.5秒）
-            totalTimeLimit = currentTargetReq * 900 + 1500;
+            // 制限時間（1画につき1.5秒 + 猶予4秒。ゲージとは独立）
+            totalTimeLimit = currentTargetReq * 1500 + 4000;
             timeRemaining = totalTimeLimit;
             warningShown = false;
             lastTime = performance.now();
@@ -782,6 +790,10 @@
             isDrawing = true;
             hasMovedInStroke = false;
             const pos = getPos(e);
+            
+            lastPos = pos;
+            lastMoveTime = performance.now();
+            
             ctx.beginPath();
             ctx.moveTo(pos.x, pos.y);
             ctx.lineWidth = 8;
@@ -795,6 +807,21 @@
             e.preventDefault();
             hasMovedInStroke = true;
             const pos = getPos(e);
+            
+            const now = performance.now();
+            const dt = now - lastMoveTime;
+            
+            // 描くスピードが速いとゲージが溜まる処理
+            if (dt > 0) {
+                const dist = Math.hypot(pos.x - lastPos.x, pos.y - lastPos.y);
+                const speed = dist / dt;
+                if (speed > 0.3) {
+                    tickleGauge += speed * 3.0; // 敏感に反応するよう係数を調整
+                }
+            }
+            lastPos = pos;
+            lastMoveTime = now;
+
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
         }
@@ -804,7 +831,7 @@
                 e.preventDefault();
                 isDrawing = false;
                 
-                // 指を離した時に画数を1追加（タップだけでも少し動けばOK）
+                // 指を離した時に画数を1追加
                 if (hasMovedInStroke) {
                     drawPoints++;
                     let remaining = Math.max(0, currentTargetReq - drawPoints);
@@ -835,18 +862,28 @@
                 let secs = Math.max(0, timeRemaining / 1000).toFixed(1);
                 timeCounter.innerText = `残り時間: ${secs}秒`;
 
-                // 時間の減少に連動してゲージ（相手の我慢ゲージ）が増加
-                let gaugePercent = ((totalTimeLimit - timeRemaining) / totalTimeLimit) * 100;
-                gaugeBar.style.width = gaugePercent + '%';
+                // くすぐったいゲージの自然減少とUI更新
+                tickleGauge = Math.max(0, tickleGauge - 0.3);
+                gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
 
-                // 残り時間が4秒以下になったら警告テキスト表示（1度だけ）
+                // 時間切れ間近の警告
                 if (timeRemaining <= 4000 && !warningShown) {
                     warningShown = true;
+                    warningText.innerText = "「……時間、まだ？」";
                     warningText.style.opacity = '1';
-                    setTimeout(() => { warningText.style.opacity = '0'; }, 2000); // 2秒で消える
+                    setTimeout(() => { warningText.style.opacity = '0'; warningShown = false; }, 2000);
                 }
 
-                if (timeRemaining <= 0) {
+                // ゲージMAX寸前の警告
+                if (tickleGauge >= 85 && !warningShown) {
+                    warningShown = true;
+                    warningText.innerText = "「ふふ、くすぐったい」";
+                    warningText.style.opacity = '1';
+                    setTimeout(() => { warningText.style.opacity = '0'; warningShown = false; }, 1500);
+                }
+
+                // どちらかの条件を満たすと失敗
+                if (timeRemaining <= 0 || tickleGauge >= 100) {
                     failDrawPhase();
                 }
 
@@ -878,7 +915,9 @@
                 evaluateEnding();
             } else {
                 const dayData = dailyData[currentDayIdx];
-                playText(dayData.fail, () => {
+                // 配列の最後に「次へ」を追加し、コールバック内でメッセージボックスを消す
+                playText([...dayData.fail, "次へ"], () => {
+                    msgBox.style.display = 'none';
                     currentDayIdx++;
                     startDay();
                 });
@@ -901,7 +940,9 @@
                 evaluateEnding();
             } else {
                 const dayData = dailyData[currentDayIdx];
-                playText(dayData.success, () => {
+                // 配列の最後に「次へ」を追加し、コールバック内でメッセージボックスを消す
+                playText([...dayData.success, "次へ"], () => {
+                    msgBox.style.display = 'none';
                     currentDayIdx++;
                     startDay();
                 });

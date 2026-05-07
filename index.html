@@ -167,7 +167,7 @@
             z-index: 1;
         }
 
-        /* --- 新規追加：一番上の指示テキスト --- */
+        /* --- 一番上の指示テキスト --- */
         #draw-instruction {
             position: absolute;
             top: 15px;
@@ -395,7 +395,7 @@
             
             <div id="day-transition">１日目</div>
 
-            <!-- 追加テキスト -->
+            <!-- 動的に変化する指示テキスト -->
             <div id="draw-instruction">てのひらに文字を書こう</div>
 
             <div id="gauge-label">🐾 彼のくすぐったいゲージ 🐾</div>
@@ -669,6 +669,7 @@
         let currentTargetReq = 0;
         let currentReward = 0;
         let currentDiff = 0;
+        let currentChoiceText = ""; // 選択された文字を保持する変数
 
         let isGameLoopRunning = false;
         let lastTime = 0;
@@ -725,6 +726,7 @@
             drawPoints = 0;
             currentTargetReq = 0;
             currentReward = 0;
+            currentChoiceText = "";
             
             msgBox.style.display = 'none';
             drawInstruction.style.display = 'none';
@@ -791,6 +793,7 @@
                     currentTargetReq = opt.req;
                     currentReward = opt.reward;
                     currentDiff = opt.diff;
+                    currentChoiceText = opt.text; // 選んだ文字を記憶
                     choiceOverlay.style.display = 'none';
                     startDrawPhase();
                 };
@@ -801,7 +804,11 @@
         function startDrawPhase() {
             phase = 'draw';
             tickleGauge = 0;
+            
+            // 指示テキストを選んだ文字に変更して表示
+            drawInstruction.innerText = `てのひらに ${currentChoiceText} と書こう`;
             drawInstruction.style.display = 'block';
+            
             gaugeLabel.style.display = 'block';
             gaugeContainer.style.display = 'block';
             gaugeBar.style.width = '0%';

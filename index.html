@@ -415,6 +415,16 @@
                 <div class="blink-triangle" id="next-mark">▼</div>
             </div>
         </div>
+
+        <!-- カスタムモーダル画面（ポップアップブロック対策） -->
+        <div id="custom-modal" class="screen" style="background-color: rgba(62, 39, 35, 0.8); z-index: 100;">
+            <div style="background-color: #FFF3E0; border: 3px dashed #FFAB91; border-radius: 20px; padding: 25px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; color: #5D4037;">
+                <p id="modal-text" style="font-size: 15px; font-weight: bold; line-height: 1.6; margin-top: 0;"></p>
+                <div id="modal-buttons" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
+                    <!-- ボタンが動的に追加されます -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -475,19 +485,57 @@
             document.getElementById('how-to-screen').classList.add('active');
         }
 
+        // --- カスタムモーダル表示機能 ---
+        function showCustomModal(text, isConfirm, onConfirm) {
+            const modal = document.getElementById('custom-modal');
+            const modalText = document.getElementById('modal-text');
+            const modalBtns = document.getElementById('modal-buttons');
+            
+            modalText.innerHTML = text.replace(/\n/g, '<br>');
+            modalBtns.innerHTML = '';
+            
+            const createBtn = (btnText, onClick) => {
+                const btn = document.createElement('button');
+                btn.className = 'menu-btn';
+                btn.style.height = '45px';
+                btn.style.fontSize = '16px';
+                btn.style.padding = '0 20px';
+                btn.style.width = 'auto'; 
+                btn.innerText = btnText;
+                btn.onclick = () => {
+                    modal.classList.remove('active');
+                    if (onClick) onClick();
+                };
+                return btn;
+            };
+            
+            if (isConfirm) {
+                modalBtns.appendChild(createBtn('はい', onConfirm));
+                modalBtns.appendChild(createBtn('いいえ', null));
+            } else {
+                modalBtns.appendChild(createBtn('OK', onConfirm));
+            }
+            
+            modal.classList.add('active');
+        }
+
         // --- エンディング解放・閲覧機能 ---
         function tryUnlockEnding(id) {
+            if (id === 10) {
+                showCustomModal('エンディング ★ は鍵で解放できません。\n他の9つのエンディングをすべて解放した状態で、もう一度プレイして最後までたどり着いてください。', false);
+                return;
+            }
+
             if (playerKeys > 0) {
-                const edName = (id === 10) ? '★' : id;
-                if (confirm(`てのひらの鍵を1つ使って、エンディング ${edName} を解放しますか？\n（残り鍵数: ${playerKeys}個）`)) {
+                showCustomModal(`てのひらの鍵を1つ使って、エンディング ${id} を解放しますか？\n（残り鍵数: ${playerKeys}個）`, true, () => {
                     playerKeys--;
                     saveKeys();
                     saveEnding(id);
                     renderBadges();
-                    alert(`エンディング ${edName} を解放しました！バッジをタップして閲覧できます。`);
-                }
+                    showCustomModal(`エンディング ${id} を解放しました！\nバッジをタップして閲覧できます。`, false);
+                });
             } else {
-                alert('てのひらの鍵が足りません。\n同じエンディングに再度到達すると鍵がもらえます。');
+                showCustomModal('てのひらの鍵が足りません。\n同じエンディングに再度到達すると鍵がもらえます。', false);
             }
         }
 
@@ -1235,7 +1283,8 @@
             let resultText = generateEndingText(earnedEndingId);
 
             if (!isNew) {
-                resultText.push("★同じエンディングに到達したため、「てのひらの鍵」を1つ獲得しました！\n（スタート画面のバッジから未解放EDの解放に使えます）");
+                resultText.push("★同じエンディングに2度目以降の到達をしたため、「てのひらの鍵」を1つ入手しました！");
+                resultText.push("【てのひらの鍵の使い道】\nスタート画面に戻り、未解放（🔒）のバッジをタップすると、鍵を1つ消費してそのエンディングを解放・閲覧することができます。\n（※エンディング★だけは鍵で解放できません）");
             }
 
             resultText.push("〜 CLEAR！ プレイありがとうございました 〜");

@@ -558,6 +558,7 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             let resultText = generateEndingText(id);
+            resultText.unshift(`エンディング${id}を再生します`);
             resultText.push("〜 閲覧終了 〜");
             resultText.push("〜 タイトルに戻ります 〜");
 

@@ -10,9 +10,10 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background-color: #1a1515;
+            background-color: #3e2723; /* 外側は暖炉のレンガのような深みのある色 */
             touch-action: none;
-            font-family: 'Hiragino Mincho ProN', 'Noto Serif JP', serif;
+            /* 可愛らしい丸ゴシック系を優先 */
+            font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'M PLUS Rounded 1c', 'Noto Serif JP', sans-serif;
             user-select: none;
             -webkit-user-select: none;
         }
@@ -23,10 +24,10 @@
             max-height: 100%;
             max-width: 400px;
             margin: 0 auto;
-            background-color: #f4d5b6;
+            background-color: #FFF3E0;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 0 20px rgba(0,0,0,0.9);
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
         }
 
         .screen {
@@ -39,8 +40,8 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(rgba(26,21,21,0.8), rgba(26,21,21,0.8)), url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%233e2723"/></svg>');
-            background-size: cover;
+            /* 暖炉の光を感じるような温かいグラデーション */
+            background: radial-gradient(circle at center, #FFF3E0 0%, #FFE0B2 60%, #FFB74D 100%);
         }
         .screen.active {
             display: flex;
@@ -51,103 +52,111 @@
         }
 
         h1 {
-            color: #f4d5b6;
-            text-shadow: 2px 2px 5px #000;
-            margin-bottom: 20px;
-            font-size: 26px;
+            color: #D84315;
+            text-shadow: 2px 2px 0px #FFE082, 4px 4px 0px #FFB300;
+            margin-bottom: 25px;
+            font-size: 28px;
             letter-spacing: 2px;
+            font-weight: 900;
         }
 
         /* エンディングバッジボックス */
         #badge-box {
-            background-color: rgba(26, 21, 21, 0.85);
-            border: 2px solid #d3b89e;
-            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.85);
+            border: 3px dashed #FF8A65;
+            border-radius: 20px;
             padding: 15px;
             width: 80%;
             margin-bottom: 30px;
             box-sizing: border-box;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 10px rgba(255, 138, 101, 0.2);
         }
         .badge-box-title {
-            color: #f4d5b6;
+            color: #D84315;
             text-align: center;
             font-size: 16px;
             margin-bottom: 15px;
             font-weight: bold;
-            text-shadow: 1px 1px 2px #000;
         }
         #badge-container {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 10px;
+            gap: 12px;
         }
         .badge {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background-color: #443;
-            border: 2px solid #222;
+            width: 38px;
+            height: 38px;
+            border-radius: 12px; /* 丸みのあるスクエア */
+            background-color: #FFF;
+            border: 2px solid #FFCCBC;
             display: flex;
             justify-content: center;
             align-items: center;
-            color: #111;
-            font-size: 14px;
+            color: #FFCCBC;
+            font-size: 16px;
             font-weight: bold;
-            box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
-            transition: all 0.3s;
+            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.05);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .badge.unlocked {
-            background-color: #f4d5b6;
-            border-color: #8d4a4a;
-            color: #8d4a4a;
-            box-shadow: 0 0 8px #f4d5b6;
+            background-color: #FF8A65;
+            border-color: #FF8A65;
+            color: #FFF;
+            box-shadow: 0 4px 0 #E64A19;
+            transform: translateY(-2px);
         }
         .badge.unlocked-x {
-            background-color: #ff6b6b;
-            border-color: #fff;
-            color: #fff;
-            box-shadow: 0 0 10px #ff6b6b;
+            background-color: #FFD54F;
+            border-color: #FFD54F;
+            color: #D84315;
+            box-shadow: 0 4px 0 #FF8F00;
+            transform: translateY(-2px);
         }
 
         .button-group {
             display: flex;
             flex-direction: column;
             gap: 20px;
-            width: 70%;
+            width: 75%;
             z-index: 5;
         }
         .menu-btn {
             width: 100%;
             height: 55px;
-            background-color: #8d4a4a;
-            border: 2px solid #d3b89e;
-            border-radius: 5px;
-            color: #fff;
+            background-color: #FF8A65;
+            border: 3px solid #FFF;
+            border-radius: 30px;
+            color: #FFF;
             font-size: 18px;
-            font-family: 'Hiragino Mincho ProN', 'Noto Serif JP', serif;
+            font-weight: bold;
+            font-family: inherit;
             cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-            transition: transform 0.1s;
+            box-shadow: 0 5px 0 #E64A19, 0 8px 10px rgba(0,0,0,0.15);
+            transition: all 0.1s;
             box-sizing: border-box;
             display: flex;
             justify-content: center;
             align-items: center;
         }
         .menu-btn:active {
-            transform: scale(0.95);
+            transform: translateY(5px);
+            box-shadow: 0 0px 0 #E64A19, 0 2px 5px rgba(0,0,0,0.1);
         }
 
         .instruction-text {
-            color: #f4d5b6;
+            color: #5D4037;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px 15px;
+            border-radius: 15px;
+            border: 2px dashed #FFCCBC;
             width: 85%;
             font-size: 15px;
             line-height: 1.8;
             margin-bottom: 30px;
-            text-shadow: 1px 1px 2px #000;
+            box-sizing: border-box;
         }
-        .instruction-text p { margin: 10px 0; }
+        .instruction-text p { margin: 8px 0; font-weight: bold; }
 
         #canvas-layer {
             position: absolute;
@@ -160,61 +169,63 @@
         
         #gauge-label {
             position: absolute;
-            top: 2px;
+            top: 5px;
             width: 100%;
             text-align: center;
-            color: #8d4a4a;
-            font-size: 12px;
+            color: #D84315;
+            font-size: 14px;
             font-weight: bold;
             z-index: 2;
             display: none;
-            text-shadow: 1px 1px 2px rgba(255,255,255,0.7);
+            text-shadow: 2px 2px 0px #FFF;
         }
 
         #gauge-container {
             position: absolute;
-            top: 20px;
+            top: 30px;
             left: 10%;
             width: 80%;
-            height: 10px;
-            background-color: rgba(0,0,0,0.2);
-            border-radius: 5px;
+            height: 14px;
+            background-color: #FFE0B2;
+            border: 3px solid #FFF;
+            border-radius: 10px;
             z-index: 2;
             display: none;
             overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
         }
         #gauge-bar {
             width: 0%;
             height: 100%;
-            background-color: #ff6b6b;
+            background-color: #FF7043;
             transition: width 0.1s;
         }
 
         #stroke-counter {
             position: absolute;
-            top: 40px;
+            top: 55px;
             width: 100%;
             text-align: center;
-            color: #8d4a4a;
+            color: #D84315;
             font-weight: bold;
-            font-size: 16px;
+            font-size: 18px;
             z-index: 2;
             display: none;
-            text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
+            text-shadow: 2px 2px 0px #FFF;
         }
 
         /* 制限時間タイマー */
         #time-counter {
             position: absolute;
-            top: 65px;
+            top: 80px;
             width: 100%;
             text-align: center;
-            color: #8d4a4a;
+            color: #D84315;
             font-weight: bold;
-            font-size: 16px;
+            font-size: 18px;
             z-index: 2;
             display: none;
-            text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
+            text-shadow: 2px 2px 0px #FFF;
         }
 
         /* 警告テキスト */
@@ -223,12 +234,12 @@
             top: 35%;
             width: 100%;
             text-align: center;
-            color: #d35400;
+            color: #D84315;
             font-size: 24px;
             font-weight: bold;
             opacity: 0;
             transition: opacity 0.5s;
-            text-shadow: 0px 0px 8px rgba(255,255,255,0.9);
+            text-shadow: 2px 2px 0px #FFF, 0px 0px 8px rgba(255,255,255,0.9);
             pointer-events: none;
             z-index: 10;
         }
@@ -239,7 +250,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.6);
+            background-color: rgba(255, 243, 224, 0.9);
             z-index: 4;
             display: none;
             flex-direction: column;
@@ -248,10 +259,11 @@
         }
         
         .choice-hint {
-            color: #f4d5b6;
-            margin-bottom: 20px;
-            font-size: 14px;
-            text-shadow: 1px 1px 3px #000;
+            color: #D84315;
+            margin-bottom: 25px;
+            font-size: 15px;
+            font-weight: bold;
+            text-shadow: 1px 1px 0px #FFF;
         }
 
         #message-box {
@@ -260,28 +272,31 @@
             left: 5%;
             right: 5%;
             height: 25%;
-            background-color: rgba(26, 21, 21, 0.85);
-            border: 2px solid #d3b89e;
-            border-radius: 8px;
-            padding: 15px;
+            background-color: #FFF;
+            border: 4px solid #FF8A65;
+            border-radius: 20px;
+            padding: 18px;
             box-sizing: border-box;
             z-index: 3;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            color: #f4d5b6;
+            color: #5D4037;
             cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
         }
         #message-text {
             margin: 0;
             font-size: 16px;
             line-height: 1.8;
             letter-spacing: 1px;
+            font-weight: bold;
         }
         .blink-triangle {
             align-self: flex-end;
             animation: blink 1s infinite;
-            font-size: 14px;
+            font-size: 16px;
+            color: #FF8A65;
         }
         @keyframes blink { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
 
@@ -291,14 +306,20 @@
             left: 50%;
             transform: translateX(-50%);
             padding: 12px 30px;
-            background-color: #8d4a4a;
-            border: 2px solid #d3b89e;
+            background-color: #FF8A65;
+            border: 3px solid #FFF;
             color: white;
-            border-radius: 5px;
+            border-radius: 30px;
             z-index: 4;
             display: none;
             font-family: inherit;
-            font-size: 16px;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 5px 0 #E64A19;
+        }
+        #finish-btn:active {
+            transform: translateX(-50%) translateY(5px);
+            box-shadow: 0 0px 0 #E64A19;
         }
 
         #day-transition {
@@ -307,13 +328,14 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: #1a1515;
-            color: #f4d5b6;
+            background-color: #FF8A65;
+            color: #FFF;
             z-index: 10;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 28px;
+            font-size: 32px;
+            font-weight: bold;
             letter-spacing: 6px;
             opacity: 0;
             pointer-events: none; 
@@ -334,8 +356,9 @@
                 </div>
             </div>
             <div class="button-group">
-                <button class="menu-btn" onclick="startGame()">はじめから</button>
+                <!-- 「遊び方」を上に変更 -->
                 <button class="menu-btn" onclick="showHowTo()">遊び方</button>
+                <button class="menu-btn" onclick="startGame()">はじめから</button>
             </div>
         </div>
 
@@ -347,7 +370,7 @@
                 <p>② 指で画面をなぞって、<strong>手を離した時</strong>に1画とカウントされます。</p>
                 <p>③ 制限時間内に「目標画数」をすべて書き終えると成功！</p>
                 <p>④ 難易度（画数）が高いほど好感度が上がります。</p>
-                <p>★ エンディングは全部で９種類。特定の選択肢を選び続けると特別な結末が…？</p>
+                <p>★ エンディングは全部で10種類。特定の選択肢を選び続けると特別な結末が…？</p>
             </div>
             <div class="button-group">
                 <button class="menu-btn" onclick="showTitle()">タイトルへ戻る</button>
@@ -401,14 +424,14 @@
         function renderBadges() {
             const container = document.getElementById('badge-container');
             container.innerHTML = '';
-            for (let i = 1; i <= 9; i++) {
+            for (let i = 1; i <= 10; i++) {
                 const badge = document.createElement('div');
                 badge.className = 'badge';
                 if (unlockedEndings.includes(i)) {
-                    badge.innerText = i === 9 ? 'X' : i;
-                    badge.classList.add(i === 9 ? 'unlocked-x' : 'unlocked');
+                    badge.innerText = i === 10 ? '★' : i;
+                    badge.classList.add(i === 10 ? 'unlocked-x' : 'unlocked');
                 } else {
-                    badge.innerText = '?';
+                    badge.innerText = '🔒';
                 }
                 container.appendChild(badge);
             }
@@ -427,7 +450,7 @@
 
         renderBadges();
 
-        // --- シナリオ・選択肢データ（実際の画数に準拠、長文テキスト復活・ダミー追加） ---
+        // --- シナリオ・選択肢データ ---
         const dailyData = [
             {
                 day: 1, label: "１日目",
@@ -615,7 +638,8 @@
             6: "【ヒント】毎日、一番短い文字をつなげてみよう（あ・い・し・て・る）。",
             7: "【ヒント】毎日、真ん中の難易度の文字を書いてすべて成功してみよう。",
             8: "【ヒント】毎日、一番難しい文字を書いてすべて成功してみよう。",
-            9: "【ヒント：Ending X】すべての記憶（他のエンディング）を取り戻した今、もう一度彼に触れてみよう。"
+            9: "【ヒント】5日間、一度も成功させずに終わってみよう（わざと失敗）。",
+            10: "【ヒント：Ending X】すべての記憶（他のエンディング）を取り戻した今、もう一度彼に触れてみよう。"
         };
 
         let currentDayIdx = 0;
@@ -631,7 +655,6 @@
         let currentReward = 0;
         let currentDiff = 0;
 
-        // 制限時間関連とくすぐったいゲージ関連
         let isGameLoopRunning = false;
         let lastTime = 0;
         let totalTimeLimit = 0;
@@ -662,7 +685,8 @@
             const rect = canvas.parentElement.getBoundingClientRect();
             canvas.width = rect.width;
             canvas.height = rect.height;
-            ctx.fillStyle = '#f4d5b6';
+            // 描画エリアの背景色は少し温かみのある白
+            ctx.fillStyle = '#FFF9F5';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
@@ -687,13 +711,13 @@
             currentTargetReq = 0;
             currentReward = 0;
             
-            msgBox.style.display = 'none'; // 前のテキスト枠を残さない
+            msgBox.style.display = 'none';
             gaugeLabel.style.display = 'none';
             gaugeContainer.style.display = 'none';
             strokeCounter.style.display = 'none';
             timeCounter.style.display = 'none';
             warningText.style.opacity = '0';
-            ctx.fillStyle = '#f4d5b6';
+            ctx.fillStyle = '#FFF9F5';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             const dayData = dailyData[currentDayIdx];
@@ -767,7 +791,6 @@
             strokeCounter.innerText = `残り: ${currentTargetReq} 画`;
             strokeCounter.style.display = 'block';
             
-            // 制限時間（1画につき1.5秒 + 猶予4秒。ゲージとは独立）
             totalTimeLimit = currentTargetReq * 1500 + 4000;
             timeRemaining = totalTimeLimit;
             warningShown = false;
@@ -799,7 +822,7 @@
             ctx.lineWidth = 8;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            ctx.strokeStyle = (currentDayIdx === 4) ? 'rgba(180, 70, 70, 0.9)' : 'rgba(200, 100, 100, 0.5)';
+            ctx.strokeStyle = (currentDayIdx === 4) ? 'rgba(255, 138, 101, 0.9)' : 'rgba(255, 183, 77, 0.6)';
         }
 
         function handleMove(e) {
@@ -811,12 +834,11 @@
             const now = performance.now();
             const dt = now - lastMoveTime;
             
-            // 描くスピードが速いとゲージが溜まる処理
             if (dt > 0) {
                 const dist = Math.hypot(pos.x - lastPos.x, pos.y - lastPos.y);
                 const speed = dist / dt;
                 if (speed > 0.3) {
-                    tickleGauge += speed * 3.0; // 敏感に反応するよう係数を調整
+                    tickleGauge += speed * 3.0; 
                 }
             }
             lastPos = pos;
@@ -831,7 +853,6 @@
                 e.preventDefault();
                 isDrawing = false;
                 
-                // 指を離した時に画数を1追加
                 if (hasMovedInStroke) {
                     drawPoints++;
                     let remaining = Math.max(0, currentTargetReq - drawPoints);
@@ -862,11 +883,9 @@
                 let secs = Math.max(0, timeRemaining / 1000).toFixed(1);
                 timeCounter.innerText = `残り時間: ${secs}秒`;
 
-                // くすぐったいゲージの自然減少とUI更新
                 tickleGauge = Math.max(0, tickleGauge - 0.3);
                 gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
 
-                // 時間切れ間近の警告
                 if (timeRemaining <= 4000 && !warningShown) {
                     warningShown = true;
                     warningText.innerText = "「……時間、まだ？」";
@@ -874,7 +893,6 @@
                     setTimeout(() => { warningText.style.opacity = '0'; warningShown = false; }, 2000);
                 }
 
-                // ゲージMAX寸前の警告
                 if (tickleGauge >= 85 && !warningShown) {
                     warningShown = true;
                     warningText.innerText = "「ふふ、くすぐったい」";
@@ -882,16 +900,15 @@
                     setTimeout(() => { warningText.style.opacity = '0'; warningShown = false; }, 1500);
                 }
 
-                // どちらかの条件を満たすと失敗
                 if (timeRemaining <= 0 || tickleGauge >= 100) {
                     failDrawPhase();
                 }
 
-                // 描いた線が薄れていく演出
-                ctx.fillStyle = 'rgba(244, 213, 182, 0.05)';
+                // 描いた線が薄れていく演出（温かみのある白に同化）
+                ctx.fillStyle = 'rgba(255, 249, 245, 0.05)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             } else {
-                lastTime = timestamp; // タイマーが飛ばないように更新
+                lastTime = timestamp; 
             }
             
             if (isGameLoopRunning) {
@@ -915,7 +932,6 @@
                 evaluateEnding();
             } else {
                 const dayData = dailyData[currentDayIdx];
-                // 配列の最後に「次へ」を追加し、コールバック内でメッセージボックスを消す
                 playText([...dayData.fail, "次へ"], () => {
                     msgBox.style.display = 'none';
                     currentDayIdx++;
@@ -940,7 +956,6 @@
                 evaluateEnding();
             } else {
                 const dayData = dailyData[currentDayIdx];
-                // 配列の最後に「次へ」を追加し、コールバック内でメッセージボックスを消す
                 playText([...dayData.success, "次へ"], () => {
                     msgBox.style.display = 'none';
                     currentDayIdx++;
@@ -949,7 +964,7 @@
             }
         }
 
-        // --- 9つのエンディング分岐とヒント処理 ---
+        // --- 10のエンディング分岐とヒント処理 ---
         function evaluateEnding() {
             let resultText = [];
             let earnedEndingId = 1;
@@ -957,8 +972,11 @@
             const isAllSuccess = (targetDiff) => {
                 return choiceHistory.length === 5 && choiceHistory.every(c => c.diff === targetDiff && c.success);
             };
+            const isAllFail = choiceHistory.length === 5 && choiceHistory.every(c => !c.success);
 
-            if (unlockedEndings.length === 8 && !unlockedEndings.includes(9)) {
+            if (unlockedEndings.length === 9 && !unlockedEndings.includes(10)) {
+                earnedEndingId = 10; 
+            } else if (isAllFail) {
                 earnedEndingId = 9; 
             } else if (isAllSuccess(0)) {
                 earnedEndingId = 6; 
@@ -1087,9 +1105,20 @@
                 resultText.push("彼との甘い日々は、ここからが本当のスタートみたいだ。");
                 resultText.push("（ダミーテキスト：ED8の終わり）");
             } else if (earnedEndingId === 9) {
-                resultText.push("【ED 9: Ending X】");
-                resultText.push("「すべての記憶を辿って、また俺の手を握ってくれたんだな。……ありがとう」");
+                resultText.push("【ED 9: 全失敗の優しいぬくもりエンド】");
+                resultText.push("「……お前、もしかしてわざとやってる？」");
                 resultText.push("（ダミーテキスト：ED9専用の長文を追加してください）");
+                resultText.push("結局、5日間一度もまともに文字を書けなかった私を見て、彼は吹き出した。");
+                resultText.push("「くすぐったいのは本当だけどさ。お前が毎回焦って失敗するの、面白くて」");
+                resultText.push("意地悪そうに笑う彼をぽかぽかと叩くと、そのまま腕を引かれ、温かい胸の中に閉じ込められた。");
+                resultText.push("「言葉なんてなくても、お前がいっしょうけんめい触れてくれただけで、十分伝わってるよ」");
+                resultText.push("暖炉の火よりも温かい彼の体温に包まれながら、私はゆっくりと目を閉じた。");
+                resultText.push("失敗ばかりだったけれど、これはこれで、最高の結末かもしれない。");
+                resultText.push("（ダミーテキスト：ED9の終わり）");
+            } else if (earnedEndingId === 10) {
+                resultText.push("【ED 10: Ending X】");
+                resultText.push("「すべての記憶を辿って、また俺の手を握ってくれたんだな。……ありがとう」");
+                resultText.push("（ダミーテキスト：ED10専用の長文を追加してください）");
                 resultText.push("これまでの数々の結末、すれ違った日々、そして結ばれた瞬間。");
                 resultText.push("すべてを知った上で、私はもう一度彼の隣に座り、この手をとった。");
                 resultText.push("「……お前には、全部見透かされてる気がする」");
@@ -1100,21 +1129,21 @@
                 resultText.push("言葉を超えた絆が、確かに二人の間に結ばれている。");
                 resultText.push("彼の手のひらに綴ったナイショ話は、もう秘密ではなくなった。");
                 resultText.push("これからは隠すことなく、堂々と、私の想いを彼に伝え続けていこう。");
-                resultText.push("（ダミーテキスト：ED9の終わり）");
+                resultText.push("（ダミーテキスト：ED10の終わり）");
             }
 
             resultText.push("（ダミーテキスト：エンディングここまで）");
             resultText.push("〜 CLEAR！ プレイありがとうございました 〜");
 
-            const lockedEndings = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(x => !unlockedEndings.includes(x));
+            const lockedEndings = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(x => !unlockedEndings.includes(x));
             if (lockedEndings.length === 0) {
                 resultText.push("★全エンディングコンプリート！おめでとうございます！");
             } else {
                 let hintId;
-                if (lockedEndings.length === 1 && lockedEndings[0] === 9) {
-                    hintId = 9; 
+                if (lockedEndings.length === 1 && lockedEndings[0] === 10) {
+                    hintId = 10; 
                 } else {
-                    const availableHints = lockedEndings.filter(x => x !== 9);
+                    const availableHints = lockedEndings.filter(x => x !== 10);
                     hintId = availableHints[Math.floor(Math.random() * availableHints.length)];
                 }
                 resultText.push(endingHints[hintId]);

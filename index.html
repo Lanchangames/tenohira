@@ -38,7 +38,6 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            /* 背景はグラデーションなしで、ポップであたたかみのある色に変更 */
             background-color: #FFE0B2; 
         }
         .screen.active {
@@ -58,8 +57,8 @@
 
         #badge-box {
             background-color: rgba(255, 255, 255, 0.85);
-            border: 2px dashed #FFAB91; /* 線を少し細く柔らかく */
-            border-radius: 20px;
+            border: 2px dashed #FFAB91; 
+            border-radius: 0px; /* Square shape */
             padding: 15px;
             width: 80%;
             margin-bottom: 30px;
@@ -88,7 +87,7 @@
         .badge {
             width: 38px;
             height: 38px;
-            border-radius: 12px;
+            border-radius: 0px; /* Square shape */
             background-color: #FFF;
             border: 2px solid #FFE0B2;
             display: flex;
@@ -97,7 +96,7 @@
             color: #FFCCBC;
             font-size: 16px;
             font-weight: bold;
-            cursor: pointer; /* 追加：タップ可能であることを示す */
+            cursor: pointer; 
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .badge.unlocked {
@@ -122,13 +121,14 @@
             gap: 20px;
             width: 75%;
             z-index: 5;
+            align-items: center; /* Center uniform buttons */
         }
         .menu-btn {
-            width: 100%;
+            width: 220px; /* Uniform size */
             height: 55px;
             background-color: #FF8A65;
-            border: none; /* 白フチを消してスッキリと */
-            border-radius: 30px;
+            border: none; 
+            border-radius: 0px; /* Square shape */
             color: #FFF;
             font-size: 18px;
             font-weight: bold;
@@ -148,10 +148,10 @@
             color: #5D4037;
             background-color: rgba(255, 255, 255, 0.95);
             padding: 20px 15px;
-            border-radius: 15px;
+            border-radius: 0px; /* Square shape */
             border: 2px dashed #FFAB91;
             width: 85%;
-            font-size: 15px;
+            font-size: 14px;
             line-height: 1.8;
             margin-bottom: 30px;
             box-sizing: border-box;
@@ -167,19 +167,31 @@
             z-index: 1;
         }
 
-        /* --- 一番上の指示テキスト --- */
+        /* ブラッシュ（赤面）エフェクト用 */
+        #blush-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ff5252;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1;
+            transition: opacity 0.3s;
+        }
+
         #draw-instruction {
             position: absolute;
             top: 15px;
             width: 100%;
             text-align: center;
-            color: #5D4037; /* 落ち着いた茶色 */
+            color: #5D4037; 
             font-size: 20px;
             font-weight: bold;
             z-index: 2;
             display: none;
             letter-spacing: 2px;
-            /* 文字数が多い時の改行対策 */
             line-height: 1.4;
             padding: 0 10px;
             box-sizing: border-box;
@@ -189,10 +201,10 @@
         
         #gauge-label {
             position: absolute;
-            top: 75px; /* テキスト2行化に備えて少し下にずらす */
+            top: 75px; 
             width: 100%;
             text-align: center;
-            color: #5D4037; /* 落ち着いた茶色に変更 */
+            color: #5D4037; 
             font-size: 14px;
             font-weight: bold;
             z-index: 2;
@@ -201,13 +213,13 @@
 
         #gauge-container {
             position: absolute;
-            top: 100px; /* テキスト2行化に備えて少し下にずらす */
+            top: 100px; 
             left: 10%;
             width: 80%;
             height: 14px;
             background-color: #FFE0B2;
             border: 3px solid #FFF;
-            border-radius: 10px;
+            border-radius: 0px; /* Square shape */
             z-index: 2;
             display: none;
             overflow: hidden;
@@ -221,7 +233,7 @@
 
         #stroke-counter {
             position: absolute;
-            top: 125px; /* テキスト2行化に備えて少し下にずらす */
+            top: 125px; 
             width: 100%;
             text-align: center;
             color: #5D4037;
@@ -233,7 +245,7 @@
 
         #time-counter {
             position: absolute;
-            top: 150px; /* テキスト2行化に備えて少し下にずらす */
+            top: 150px; 
             width: 100%;
             text-align: center;
             color: #5D4037;
@@ -245,7 +257,7 @@
 
         #warning-text {
             position: absolute;
-            top: 40%; /* 少し下に調整 */
+            top: 40%; 
             width: 100%;
             text-align: center;
             color: #D84315;
@@ -285,8 +297,8 @@
             right: 5%;
             height: 25%;
             background-color: rgba(255, 255, 255, 0.95);
-            border: 3px solid #FFAB91; /* 少し細く */
-            border-radius: 20px;
+            border: 3px solid #FFAB91; 
+            border-radius: 0px; /* Square shape */
             padding: 18px;
             box-sizing: border-box;
             z-index: 3;
@@ -316,11 +328,12 @@
             bottom: 35%;
             left: 50%;
             transform: translateX(-50%);
-            padding: 12px 30px;
+            width: 220px; /* Uniform size */
+            height: 55px;
             background-color: #FF8A65;
             border: none;
             color: white;
-            border-radius: 30px;
+            border-radius: 0px; /* Square shape */
             z-index: 4;
             display: none;
             font-family: inherit;
@@ -379,7 +392,8 @@
                 <p>① 毎日、書きたい言葉（難易度）を選びます。</p>
                 <p>② 指で画面をなぞって、<strong>手を離した時</strong>に1画とカウントされます。</p>
                 <p>③ 制限時間内に「目標画数」をすべて書き終えると成功！</p>
-                <p>④ 難易度（画数）が高いほど好感度が上がります。</p>
+                <p>④ 難易度が高いほど好感度が上がります。</p>
+                <p>⑤ 手のひらには「敏感な場所」が隠されています。そこをなぞると、くすぐったさが急上昇するので要注意！</p>
                 <p>★ エンディングは全部で10種類。特定の選択肢を選び続けると特別な結末が…？</p>
                 <p>🔑 同じEDに再度到達すると「てのひらの鍵」が手に入り、未解放EDをアンロックできます。</p>
             </div>
@@ -390,11 +404,11 @@
 
         <!-- ゲーム画面 -->
         <div id="game-screen" class="screen">
+            <div id="blush-overlay"></div>
             <canvas id="canvas-layer"></canvas>
             
             <div id="day-transition">１日目</div>
 
-            <!-- 動的に変化する指示テキスト -->
             <div id="draw-instruction">てのひらに文字を書こう</div>
 
             <div id="gauge-label">🐾 彼のくすぐったいゲージ 🐾</div>
@@ -416,9 +430,9 @@
             </div>
         </div>
 
-        <!-- カスタムモーダル画面（ポップアップブロック対策） -->
+        <!-- カスタムモーダル画面 -->
         <div id="custom-modal" class="screen" style="background-color: rgba(62, 39, 35, 0.8); z-index: 100;">
-            <div style="background-color: #FFF3E0; border: 3px dashed #FFAB91; border-radius: 20px; padding: 25px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; color: #5D4037;">
+            <div style="background-color: #FFF3E0; border: 3px dashed #FFAB91; border-radius: 0px; padding: 25px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; color: #5D4037;">
                 <p id="modal-text" style="font-size: 15px; font-weight: bold; line-height: 1.6; margin-top: 0;"></p>
                 <div id="modal-buttons" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
                     <!-- ボタンが動的に追加されます -->
@@ -483,6 +497,7 @@
         function showHowTo() {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('how-to-screen').classList.add('active');
+            initAudio();
         }
 
         // --- カスタムモーダル表示機能 ---
@@ -500,7 +515,7 @@
                 btn.style.height = '45px';
                 btn.style.fontSize = '16px';
                 btn.style.padding = '0 20px';
-                btn.style.width = 'auto'; 
+                btn.style.width = '100px'; 
                 btn.innerText = btnText;
                 btn.onclick = () => {
                     modal.classList.remove('active');
@@ -519,7 +534,6 @@
             modal.classList.add('active');
         }
 
-        // --- エンディング解放・閲覧機能 ---
         function tryUnlockEnding(id) {
             if (id === 10) {
                 showCustomModal('エンディング ★ は鍵で解放できません。\n他の9つのエンディングをすべて解放した状態で、もう一度プレイして最後までたどり着いてください。', false);
@@ -540,6 +554,7 @@
         }
 
         function replayEnding(id) {
+            initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
             
@@ -554,6 +569,7 @@
             warningText.style.opacity = '0';
             finishBtn.style.display = 'none';
             choiceOverlay.style.display = 'none';
+            document.getElementById('blush-overlay').style.opacity = '0';
             ctx.fillStyle = '#FFF9F5';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -573,7 +589,6 @@
 
         renderBadges();
 
-        // --- シナリオ・選択肢データ ---
         const dailyData = [
             {
                 day: 1, label: "１日目",
@@ -751,7 +766,6 @@
             }
         ];
 
-        // --- ヒントデータ ---
         const endingHints = {
             1: "【ヒント】難易度の高い文字を選んで、わざと何度も失敗してみよう。",
             2: "【ヒント】少しだけ好感度を稼いで、あとは失敗してみよう。",
@@ -789,6 +803,70 @@
         let lastPos = null;
         let lastMoveTime = 0;
 
+        // タイピング速度（高速入力）依存の特別仕様フック
+        let keyStrokes = [];
+        window.addEventListener('keydown', (e) => {
+            const now = performance.now();
+            keyStrokes.push(now);
+            keyStrokes = keyStrokes.filter(t => now - t < 2000);
+            const typingSpeed = keyStrokes.length / 2; 
+            tickleGauge += typingSpeed * 1.5; 
+        });
+
+        // 敏感なポイント設定
+        const sensitiveAreas = [
+            { x: 0.25, y: 0.35, r: 0.12 },
+            { x: 0.75, y: 0.55, r: 0.15 }
+        ];
+
+        // サウンド関連変数
+        let audioCtx;
+        let touchGain;
+
+        function initAudio() {
+            if(audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // ノイズ低減・高品質な暖炉サウンド
+            const bufferSize = audioCtx.sampleRate * 2;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                output[i] = (Math.random() * 2 - 1) * 0.03; // 非常になめらかで微小なノイズ
+            }
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            noise.loop = true;
+            
+            const fireFilter = audioCtx.createBiquadFilter();
+            fireFilter.type = 'lowpass';
+            fireFilter.frequency.value = 250; 
+            
+            noise.connect(fireFilter);
+            fireFilter.connect(audioCtx.destination);
+            noise.start();
+
+            // タッチ（擦る）サウンド
+            const tBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const tOutput = tBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) tOutput[i] = (Math.random() * 2 - 1) * 0.3;
+            const tNoise = audioCtx.createBufferSource();
+            tNoise.buffer = tBuffer;
+            tNoise.loop = true;
+            
+            const tFilter = audioCtx.createBiquadFilter();
+            tFilter.type = 'bandpass';
+            tFilter.frequency.value = 600;
+            
+            touchGain = audioCtx.createGain();
+            touchGain.gain.value = 0;
+            
+            tNoise.connect(tFilter);
+            tFilter.connect(touchGain);
+            touchGain.connect(audioCtx.destination);
+            tNoise.start();
+        }
+
         const canvas = document.getElementById('canvas-layer');
         const ctx = canvas.getContext('2d');
         const drawInstruction = document.getElementById('draw-instruction');
@@ -805,6 +883,7 @@
         const choiceOverlay = document.getElementById('choice-overlay');
         const choicesContainer = document.getElementById('choices-container');
         const dayTransition = document.getElementById('day-transition');
+        const blushOverlay = document.getElementById('blush-overlay');
 
         function resizeCanvas() {
             const rect = canvas.parentElement.getBoundingClientRect();
@@ -815,10 +894,10 @@
         }
 
         function startGame() {
+            initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
             
-            // ★修正ポイント：エンディング時に上書きされたクリックイベントを元に戻す
             msgBox.onclick = advanceText;
             
             playerAffection = 0;
@@ -846,6 +925,7 @@
             strokeCounter.style.display = 'none';
             timeCounter.style.display = 'none';
             warningText.style.opacity = '0';
+            blushOverlay.style.opacity = '0';
             ctx.fillStyle = '#FFF9F5';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -958,6 +1038,10 @@
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.strokeStyle = (currentDayIdx === 4) ? 'rgba(255, 138, 101, 0.9)' : 'rgba(255, 183, 77, 0.6)';
+            
+            if(audioCtx) {
+                touchGain.gain.setTargetAtTime(0.06, audioCtx.currentTime, 0.05);
+            }
         }
 
         function handleMove(e) {
@@ -972,8 +1056,25 @@
             if (dt > 0) {
                 const dist = Math.hypot(pos.x - lastPos.x, pos.y - lastPos.y);
                 const speed = dist / dt;
+                
                 if (speed > 0.3) {
                     tickleGauge += speed * 3.0; 
+                }
+
+                // 敏感なポイント判定
+                const relX = pos.x / canvas.width;
+                const relY = pos.y / canvas.height;
+                let inSensitive = false;
+                for(let area of sensitiveAreas) {
+                    const dx = relX - area.x;
+                    const dy = relY - area.y;
+                    if(Math.sqrt(dx*dx + dy*dy) < area.r) {
+                        inSensitive = true;
+                        break;
+                    }
+                }
+                if (inSensitive) {
+                    tickleGauge += 1.5; // 急激に上昇
                 }
             }
             lastPos = pos;
@@ -984,6 +1085,9 @@
         }
 
         function handleEnd(e) {
+            if(audioCtx) {
+                touchGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+            }
             if (isDrawing && phase === 'draw') {
                 e.preventDefault();
                 isDrawing = false;
@@ -998,6 +1102,13 @@
                     }
                 }
             }
+        }
+
+        function showDynamicWarning(txt, dur) {
+            warningShown = true;
+            warningText.innerText = txt;
+            warningText.style.opacity = '1';
+            setTimeout(() => { warningText.style.opacity = '0'; warningShown = false; }, dur);
         }
 
         canvas.addEventListener('mousedown', handleStart, {passive: false});
@@ -1018,21 +1129,24 @@
                 let secs = Math.max(0, timeRemaining / 1000).toFixed(1);
                 timeCounter.innerText = `残り時間: ${secs}秒`;
 
-                tickleGauge = Math.max(0, tickleGauge - 0.3);
+                // 時間経過によるゲージ減少を削除（タイピング等の入力のみに依存させる修正）
+                // tickleGauge = Math.max(0, tickleGauge - 0.3);
+
                 gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
+                
+                const bOpacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
+                blushOverlay.style.opacity = bOpacity;
 
-                if (timeRemaining <= 4000 && !warningShown) {
-                    warningShown = true;
-                    warningText.innerText = "「……時間、まだ？」";
-                    warningText.style.opacity = '1';
-                    setTimeout(() => { warningText.style.opacity = '0'; warningShown = false; }, 2000);
-                }
-
-                if (tickleGauge >= 85 && !warningShown) {
-                    warningShown = true;
-                    warningText.innerText = "「ふふ、くすぐったい」";
-                    warningText.style.opacity = '1';
-                    setTimeout(() => { warningText.style.opacity = '0'; warningShown = false; }, 1500);
+                if (!warningShown) {
+                    if (timeRemaining <= 4000) {
+                        showDynamicWarning("「……時間、まだ？」", 2000);
+                    } else if (tickleGauge >= 90) {
+                        showDynamicWarning("「待って、そこ…っ」", 1500);
+                    } else if (tickleGauge >= 60) {
+                        showDynamicWarning("「ちょっと…」", 1500);
+                    } else if (tickleGauge >= 30 && Math.random() < 0.02) {
+                        showDynamicWarning("「ふふ、くすぐったい」", 1500);
+                    }
                 }
 
                 if (timeRemaining <= 0 || tickleGauge >= 100) {
@@ -1052,6 +1166,7 @@
 
         function failDrawPhase() {
             isDrawing = false;
+            if(audioCtx) touchGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
             drawInstruction.style.display = 'none';
             gaugeLabel.style.display = 'none';
             gaugeContainer.style.display = 'none';
@@ -1077,6 +1192,7 @@
 
         function completeDrawPhase() {
             isDrawing = false;
+            if(audioCtx) touchGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05);
             drawInstruction.style.display = 'none';
             gaugeLabel.style.display = 'none';
             gaugeContainer.style.display = 'none';
@@ -1100,7 +1216,6 @@
             }
         }
 
-        // --- エンディングテキスト生成関数 ---
         function generateEndingText(earnedEndingId) {
             let resultText = [];
             resultText.push("（ダミーテキスト：ここから各エンディングの文章です）");
@@ -1245,7 +1360,6 @@
             return resultText;
         }
 
-        // --- 10のエンディング分岐処理 ---
         function evaluateEnding() {
             let earnedEndingId = 1;
 
@@ -1309,7 +1423,6 @@
             playText(resultText, () => {
                 nextMark.style.display = 'none'; 
                 msgBox.onclick = () => {
-                    // ★修正ポイント：次のプレイのためにクリックイベントを元に戻す
                     msgBox.onclick = advanceText; 
                     showTitle();
                 };

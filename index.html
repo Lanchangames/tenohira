@@ -1129,8 +1129,8 @@
                 let secs = Math.max(0, timeRemaining / 1000).toFixed(1);
                 timeCounter.innerText = `残り時間: ${secs}秒`;
 
-                // 時間経過によるゲージ減少を削除（タイピング等の入力のみに依存させる修正）
-                // tickleGauge = Math.max(0, tickleGauge - 0.3);
+                // ゲージの自然減少（時間経過）を復旧
+                tickleGauge = Math.max(0, tickleGauge - 0.3);
 
                 gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
                 
@@ -1379,11 +1379,29 @@
             } else if (isAllSuccess(2)) {
                 earnedEndingId = 8; 
             } else {
-                if (playerAffection <= 3) earnedEndingId = 1;
-                else if (playerAffection <= 7) earnedEndingId = 2;
-                else if (playerAffection <= 11) earnedEndingId = 3;
-                else if (playerAffection <= 15) earnedEndingId = 4;
-                else earnedEndingId = 5;
+                let lowCount = 0, midCount = 0, highCount = 0;
+                choiceHistory.forEach(c => {
+                    if (c.diff === 0) lowCount++;
+                    else if (c.diff === 1) midCount++;
+                    else if (c.diff === 2) highCount++;
+                });
+
+                let maxDiff = 0;
+                if (highCount >= midCount && highCount >= lowCount) {
+                    maxDiff = 2;
+                } else if (midCount >= lowCount) {
+                    maxDiff = 1;
+                } else {
+                    maxDiff = 0;
+                }
+
+                if (maxDiff === 0) {
+                    earnedEndingId = 1; 
+                } else if (maxDiff === 1) {
+                    earnedEndingId = (playerAffection >= 6) ? 3 : 2; 
+                } else if (maxDiff === 2) {
+                    earnedEndingId = (playerAffection >= 10) ? 5 : 4; 
+                }
             }
 
             let isNew = !unlockedEndings.includes(earnedEndingId);

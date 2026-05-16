@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>手のひらのナイショ話</title>
+    <title>ゆびさきで秘密を</title>
     <style>
         html, body {
             height: 100%;
@@ -387,7 +387,7 @@
 
         <!-- 遊び方画面 -->
         <div id="how-to-screen" class="screen">
-            <img src="title.png" alt="手のひらのナイショ話" id="title-logo" style="max-width: 200px; margin-bottom: 20px;">
+            <img src="title.png" alt="ゆびさきで秘密を" id="title-logo" style="max-width: 200px; margin-bottom: 20px;">
             <div class="instruction-text">
                 <p>① 毎日、書きたい言葉（難易度）を選びます。</p>
                 <p>② 指で画面をなぞって、<strong>手を離した時</strong>に1画とカウントされます。</p>
@@ -1416,15 +1416,15 @@
             let resultText = generateEndingText(earnedEndingId);
 
             if (!isNew) {
-                resultText.push("★同じエンディングに2度目以降の到達をしたため、「てのひらの鍵」を1つ入手しました！");
-                resultText.push("【てのひらの鍵の使い道】\nスタート画面に戻り、未解放（🔒）のバッジをタップすると、鍵を1つ消費してそのエンディングを解放・閲覧することができます。\n（※エンディング★だけは鍵で解放できません）");
+                resultText.push("★同じエンディングに到達したため、「てのひらの鍵」を1つ入手しました！");
+                resultText.push("【てのひらの鍵の使い方】\nスタート画面に戻り、未解放（🔒）のバッジをタップすると、鍵を1つ消費してエンディングを解放・閲覧することができます。\n（※エンディング★だけは鍵で解放できません）");
             }
 
             resultText.push("〜 CLEAR！ プレイありがとうございました 〜");
 
             const lockedEndings = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(x => !unlockedEndings.includes(x));
             if (lockedEndings.length === 0) {
-                resultText.push("★全エンディングコンプリート！おめでとうございます！");
+                resultText.push("全エンディングコンプリート！おめでとうございます！");
             } else {
                 let hintId;
                 if (lockedEndings.length === 1 && lockedEndings[0] === 10) {

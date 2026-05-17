@@ -58,7 +58,7 @@
         #badge-box {
             background-color: rgba(255, 255, 255, 0.85);
             border: 2px dashed #FFAB91; 
-            border-radius: 0;
+            border-radius: 15px;
             padding: 15px;
             width: 80%;
             margin-bottom: 30px;
@@ -87,7 +87,7 @@
         .badge {
             width: 38px;
             height: 38px;
-            border-radius: 0;
+            border-radius: 50%;
             background-color: #FFF;
             border: 2px solid #FFE0B2;
             display: flex;
@@ -128,7 +128,7 @@
             height: 55px;
             background-color: #FF8A65;
             border: none; 
-            border-radius: 0;
+            border-radius: 25px;
             color: #FFF;
             font-size: 18px;
             font-weight: bold;
@@ -148,7 +148,7 @@
             color: #5D4037;
             background-color: rgba(255, 255, 255, 0.95);
             padding: 20px 15px;
-            border-radius: 0;
+            border-radius: 15px;
             border: 2px dashed #FFAB91;
             width: 85%;
             font-size: 14px;
@@ -297,7 +297,7 @@
             height: 25%;
             background-color: rgba(255, 255, 255, 0.95);
             border: 3px solid #FFAB91; 
-            border-radius: 0;
+            border-radius: 15px;
             padding: 18px;
             box-sizing: border-box;
             z-index: 3;
@@ -332,7 +332,7 @@
             background-color: #FF8A65;
             border: none;
             color: white;
-            border-radius: 0;
+            border-radius: 25px;
             z-index: 4;
             display: none;
             font-family: inherit;
@@ -419,7 +419,7 @@
         </div>
 
         <div id="custom-modal" class="screen" style="background-color: rgba(62, 39, 35, 0.8); z-index: 100;">
-            <div style="background-color: #FFF3E0; border: 3px dashed #FFAB91; border-radius: 0; padding: 25px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; color: #5D4037;">
+            <div style="background-color: #FFF3E0; border: 3px dashed #FFAB91; border-radius: 15px; padding: 25px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; color: #5D4037;">
                 <p id="modal-text" style="font-size: 15px; font-weight: bold; line-height: 1.6; margin-top: 0;"></p>
                 <div id="modal-buttons" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;"></div>
             </div>
@@ -427,6 +427,165 @@
     </div>
 
     <script>
+        // --- 欠落していたゲーム進行用の必須関数群 ---
+        const canvas = document.getElementById('canvas-layer');
+        const ctx = canvas ? canvas.getContext('2d') : null;
+        const msgBox = document.getElementById('message-box');
+        const msgText = document.getElementById('message-text');
+        const nextMark = document.getElementById('next-mark');
+        const choiceOverlay = document.getElementById('choice-overlay');
+        const choicesContainer = document.getElementById('choices-container');
+        const finishBtn = document.getElementById('finish-btn');
+        const drawInstruction = document.getElementById('draw-instruction');
+        const gaugeLabel = document.getElementById('gauge-label');
+        const gaugeContainer = document.getElementById('gauge-container');
+        const gaugeBar = document.getElementById('gauge-bar');
+        const strokeCounter = document.getElementById('stroke-counter');
+        const timeCounter = document.getElementById('time-counter');
+        const warningText = document.getElementById('warning-text');
+        const blushOverlay = document.getElementById('blush-overlay');
+
+        let currentTextSequence = [];
+        let textCallback = null;
+        let phase = 'title';
+        let currentDayIdx = 0;
+        let playerAffection = 0;
+        let choiceHistory = [];
+        let timeRemaining = 0;
+        let tickleGauge = 0;
+        let warningShown = false;
+        let lastTime = 0;
+        let isGameLoopRunning = false;
+        let currentChoice = null;
+
+        function resizeCanvas() {
+            if(canvas) {
+                canvas.width = canvas.parentElement.clientWidth;
+                canvas.height = canvas.parentElement.clientHeight;
+            }
+        }
+
+        function playText(texts, onComplete) {
+            currentTextSequence = [...texts];
+            textCallback = onComplete;
+            phase = 'text';
+            if (msgBox) msgBox.style.display = 'flex';
+            advanceText();
+        }
+
+        function advanceText() {
+            if (currentTextSequence.length === 0) {
+                if (textCallback) {
+                    let cb = textCallback;
+                    textCallback = null;
+                    cb();
+                }
+                return;
+            }
+            if (msgText) msgText.innerHTML = currentTextSequence.shift();
+            if (nextMark) nextMark.style.display = currentTextSequence.length > 0 ? 'block' : 'none';
+        }
+
+        function startDay() {
+            if (currentDayIdx >= dailyData.length) {
+                evaluateEnding();
+                return;
+            }
+            const day = dailyData[currentDayIdx];
+            const transition = document.getElementById('day-transition');
+            if (transition) {
+                transition.innerText = day.label;
+                transition.style.opacity = '1';
+                setTimeout(() => {
+                    transition.style.opacity = '0';
+                    setTimeout(() => {
+                        playText(day.intro, () => {
+                            if (day.choices) showChoices(day.choices);
+                            else evaluateEnding(); 
+                        });
+                    }, 1000);
+                }, 2000);
+            }
+        }
+
+        function showChoices(choices) {
+            phase = 'choice';
+            if (choiceOverlay) choiceOverlay.style.display = 'flex';
+            if (choicesContainer) {
+                choicesContainer.innerHTML = '';
+                choices.forEach(c => {
+                    const btn = document.createElement('button');
+                    btn.className = 'menu-btn';
+                    btn.innerText = c.text;
+                    btn.onclick = () => startDrawPhase(c);
+                    choicesContainer.appendChild(btn);
+                });
+            }
+        }
+
+        function startDrawPhase(choice) {
+            if (choiceOverlay) choiceOverlay.style.display = 'none';
+            if (msgBox) msgBox.style.display = 'none';
+            phase = 'draw';
+            tickleGauge = 0;
+            timeRemaining = choice.req * 2000;
+            warningShown = false;
+            currentChoice = choice;
+            
+            if (drawInstruction) drawInstruction.style.display = 'block';
+            if (gaugeLabel) gaugeLabel.style.display = 'block';
+            if (gaugeContainer) gaugeContainer.style.display = 'block';
+            if (strokeCounter) {
+                strokeCounter.style.display = 'block';
+                strokeCounter.innerText = `残り: ${choice.req} 画`;
+            }
+            if (timeCounter) timeCounter.style.display = 'block';
+            if (finishBtn) finishBtn.style.display = 'block';
+        }
+
+        function completeDrawPhase() {
+            endDrawPhase(true);
+        }
+
+        function failDrawPhase() {
+            endDrawPhase(false);
+        }
+
+        function endDrawPhase(success) {
+            phase = 'text';
+            if (drawInstruction) drawInstruction.style.display = 'none';
+            if (gaugeLabel) gaugeLabel.style.display = 'none';
+            if (gaugeContainer) gaugeContainer.style.display = 'none';
+            if (strokeCounter) strokeCounter.style.display = 'none';
+            if (timeCounter) timeCounter.style.display = 'none';
+            if (finishBtn) finishBtn.style.display = 'none';
+            if (blushOverlay) blushOverlay.style.opacity = '0';
+            
+            choiceHistory.push({ diff: currentChoice.diff, success: success });
+            if (success) playerAffection += currentChoice.reward;
+            
+            const day = dailyData[currentDayIdx];
+            const texts = success ? day.success : day.fail;
+            
+            playText(texts || ["……"], () => {
+                currentDayIdx++;
+                startDay();
+            });
+        }
+
+        function showDynamicWarning(text, duration) {
+            warningShown = true;
+            if (warningText) {
+                warningText.innerText = text;
+                warningText.style.opacity = '1';
+                setTimeout(() => {
+                    warningText.style.opacity = '0';
+                    warningShown = false;
+                }, duration);
+            }
+        }
+        // --- 必須関数群 ここまで ---
+
         let unlockedEndings = [];
         let playerKeys = 0;
 
@@ -531,23 +690,20 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
             
-            const msgBoxEl = document.getElementById('message-box');
-            if (msgBoxEl && typeof advanceText === 'function') {
-                msgBoxEl.onclick = advanceText;
-            }
+            if (msgBox) msgBox.onclick = advanceText;
             
-            if (typeof resizeCanvas === 'function') resizeCanvas(); 
-            document.getElementById('draw-instruction').style.display = 'none'; 
-            document.getElementById('gauge-label').style.display = 'none'; 
-            document.getElementById('gauge-container').style.display = 'none';
-            document.getElementById('stroke-counter').style.display = 'none'; 
-            document.getElementById('time-counter').style.display = 'none'; 
-            document.getElementById('warning-text').style.opacity = '0';
-            document.getElementById('finish-btn').style.display = 'none'; 
-            document.getElementById('choice-overlay').style.display = 'none';
-            document.getElementById('blush-overlay').style.opacity = '0';
+            resizeCanvas(); 
+            if (drawInstruction) drawInstruction.style.display = 'none'; 
+            if (gaugeLabel) gaugeLabel.style.display = 'none'; 
+            if (gaugeContainer) gaugeContainer.style.display = 'none';
+            if (strokeCounter) strokeCounter.style.display = 'none'; 
+            if (timeCounter) timeCounter.style.display = 'none'; 
+            if (warningText) warningText.style.opacity = '0';
+            if (finishBtn) finishBtn.style.display = 'none'; 
+            if (choiceOverlay) choiceOverlay.style.display = 'none';
+            if (blushOverlay) blushOverlay.style.opacity = '0';
             
-            if (typeof ctx !== 'undefined') {
+            if (ctx) {
                 ctx.fillStyle = '#FFF9F5'; 
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
@@ -556,18 +712,15 @@
             resultText.unshift(`エンディング${id}を再生します`);
             resultText.push("〜 閲覧終了 〜"); resultText.push("〜 タイトルに戻ります 〜");
             
-            if (typeof playText === 'function') {
-                playText(resultText, () => {
-                    const nm = document.getElementById('next-mark');
-                    if(nm) nm.style.display = 'none'; 
-                    if(msgBoxEl) {
-                        msgBoxEl.onclick = () => { 
-                            if(typeof advanceText === 'function') msgBoxEl.onclick = advanceText; 
-                            showTitle(); 
-                        };
-                    }
-                });
-            }
+            playText(resultText, () => {
+                if(nextMark) nextMark.style.display = 'none'; 
+                if(msgBox) {
+                    msgBox.onclick = () => { 
+                        msgBox.onclick = advanceText; 
+                        showTitle(); 
+                    };
+                }
+            });
         }
 
         function startGame() {
@@ -575,36 +728,20 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
             
-            // 安全なDOM参照と関数の存在チェックによる進行不可バグの回避
-            const msgBoxEl = document.getElementById('message-box');
-            if (msgBoxEl && typeof advanceText === 'function') {
-                msgBoxEl.onclick = advanceText;
+            if (msgBox) msgBox.onclick = advanceText;
+            
+            playerAffection = 0;
+            currentDayIdx = 0;
+            choiceHistory = [];
+            
+            resizeCanvas();
+            
+            if (!isGameLoopRunning) {
+                isGameLoopRunning = true;
+                requestAnimationFrame(gameLoop);
             }
             
-            window.playerAffection = 0;
-            window.currentDayIdx = 0;
-            window.choiceHistory = [];
-            
-            if (typeof resizeCanvas === 'function') resizeCanvas();
-            
-            if (typeof window.isGameLoopRunning === 'undefined' || !window.isGameLoopRunning) {
-                window.isGameLoopRunning = true;
-                if (typeof gameLoop === 'function') {
-                    requestAnimationFrame(gameLoop);
-                }
-            }
-            
-            if (typeof startDay === 'function') {
-                startDay();
-            } else if (typeof playText === 'function') {
-                // startDayが未定義でも最低限テキストを開始するフォールバック
-                const day = dailyData[0];
-                if (day && day.intro) {
-                    playText([...day.intro], () => {
-                        if (typeof showChoices === 'function') showChoices(day.choices);
-                    });
-                }
-            }
+            startDay();
         }
 
         const dailyData = [
@@ -893,19 +1030,15 @@
             }
             resultText.push("〜 タイトルに戻ります 〜");
             
-            if (typeof playText === 'function') {
-                playText(resultText, () => {
-                    const nm = document.getElementById('next-mark');
-                    if (nm) nm.style.display = 'none'; 
-                    const msgBoxEl = document.getElementById('message-box');
-                    if (msgBoxEl) {
-                        msgBoxEl.onclick = () => { 
-                            if (typeof advanceText === 'function') msgBoxEl.onclick = advanceText; 
-                            showTitle(); 
-                        };
-                    }
-                });
-            }
+            playText(resultText, () => {
+                if (nextMark) nextMark.style.display = 'none'; 
+                if (msgBox) {
+                    msgBox.onclick = () => { 
+                        msgBox.onclick = advanceText; 
+                        showTitle(); 
+                    };
+                }
+            });
         }
         
         window.addEventListener('DOMContentLoaded', showTitle);
@@ -928,44 +1061,40 @@
                 
                 if (typeof timeRemaining !== 'undefined') {
                     timeRemaining -= dt;
-                    const tc = document.getElementById('time-counter');
-                    if(tc) tc.innerText = `残り時間: ${Math.max(0, timeRemaining / 1000).toFixed(1)}秒`;
+                    if(timeCounter) timeCounter.innerText = `残り時間: ${Math.max(0, timeRemaining / 1000).toFixed(1)}秒`;
                 }
                 
                 if (typeof tickleGauge !== 'undefined') {
                     tickleGauge = Math.max(0, tickleGauge - 0.3);
-                    const gb = document.getElementById('gauge-bar');
-                    if(gb) gb.style.width = Math.min(100, tickleGauge) + '%';
-                    
-                    const bo = document.getElementById('blush-overlay');
-                    if(bo) bo.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
+                    if(gaugeBar) gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
+                    if(blushOverlay) blushOverlay.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
                     
                     if (typeof warningShown !== 'undefined' && !warningShown) {
                         if (typeof timeRemaining !== 'undefined' && timeRemaining <= 4000) {
-                            if(typeof showDynamicWarning === 'function') showDynamicWarning("「……時間、まだ？」", 2000);
+                            showDynamicWarning("「……時間、まだ？」", 2000);
                         }
                         else if (tickleGauge >= 90) {
-                            if(typeof showDynamicWarning === 'function') showDynamicWarning("「待って、そこ…っ」", 1500);
+                            showDynamicWarning("「待って、そこ…っ」", 1500);
                         }
                         else if (tickleGauge >= 60) {
-                            if(typeof showDynamicWarning === 'function') showDynamicWarning("「ちょっと…」", 1500);
+                            showDynamicWarning("「ちょっと…」", 1500);
                         }
                         else if (tickleGauge >= 30 && Math.random() < 0.02) {
-                            if(typeof showDynamicWarning === 'function') showDynamicWarning("「ふふ、くすぐったい」", 1500);
+                            showDynamicWarning("「ふふ、くすぐったい」", 1500);
                         }
                     }
                     if ((typeof timeRemaining !== 'undefined' && timeRemaining <= 0) || tickleGauge >= 100) {
-                        if(typeof failDrawPhase === 'function') failDrawPhase();
+                        failDrawPhase();
                     }
                 }
-                if (typeof ctx !== 'undefined' && typeof canvas !== 'undefined') {
+                if (typeof ctx !== 'undefined' && ctx && typeof canvas !== 'undefined') {
                     ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; 
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                 }
             } else { 
                 window.lastTime = timestamp; 
             }
-            if (typeof window.isGameLoopRunning !== 'undefined' && window.isGameLoopRunning) {
+            if (typeof isGameLoopRunning !== 'undefined' && isGameLoopRunning) {
                 requestAnimationFrame(gameLoop);
             }
         }

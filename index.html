@@ -58,7 +58,7 @@
         #badge-box {
             background-color: rgba(255, 255, 255, 0.85);
             border: 2px dashed #FFAB91; 
-            border-radius: 12px;
+            border-radius: 0;
             padding: 15px;
             width: 80%;
             margin-bottom: 30px;
@@ -87,7 +87,7 @@
         .badge {
             width: 38px;
             height: 38px;
-            border-radius: 50%;
+            border-radius: 0;
             background-color: #FFF;
             border: 2px solid #FFE0B2;
             display: flex;
@@ -128,7 +128,7 @@
             height: 55px;
             background-color: #FF8A65;
             border: none; 
-            border-radius: 30px;
+            border-radius: 0;
             color: #FFF;
             font-size: 18px;
             font-weight: bold;
@@ -148,7 +148,7 @@
             color: #5D4037;
             background-color: rgba(255, 255, 255, 0.95);
             padding: 20px 15px;
-            border-radius: 12px;
+            border-radius: 0;
             border: 2px dashed #FFAB91;
             width: 85%;
             font-size: 14px;
@@ -218,7 +218,7 @@
             height: 14px;
             background-color: #FFE0B2;
             border: 3px solid #FFF;
-            border-radius: 10px;
+            border-radius: 0;
             z-index: 2;
             display: none;
             overflow: hidden;
@@ -297,7 +297,7 @@
             height: 25%;
             background-color: rgba(255, 255, 255, 0.95);
             border: 3px solid #FFAB91; 
-            border-radius: 12px;
+            border-radius: 0;
             padding: 18px;
             box-sizing: border-box;
             z-index: 3;
@@ -332,7 +332,7 @@
             background-color: #FF8A65;
             border: none;
             color: white;
-            border-radius: 30px;
+            border-radius: 0;
             z-index: 4;
             display: none;
             font-family: inherit;
@@ -419,7 +419,7 @@
         </div>
 
         <div id="custom-modal" class="screen" style="background-color: rgba(62, 39, 35, 0.8); z-index: 100;">
-            <div style="background-color: #FFF3E0; border: 3px dashed #FFAB91; border-radius: 15px; padding: 25px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; color: #5D4037;">
+            <div style="background-color: #FFF3E0; border: 3px dashed #FFAB91; border-radius: 0; padding: 25px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; color: #5D4037;">
                 <p id="modal-text" style="font-size: 15px; font-weight: bold; line-height: 1.6; margin-top: 0;"></p>
                 <div id="modal-buttons" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;"></div>
             </div>
@@ -458,8 +458,13 @@
         let lastTime = 0;
         let isGameLoopRunning = false;
         let currentChoice = null;
+        
+        // 描画関連の変数
+        let isDrawing = false;
+        let currentStrokes = 0;
+        let lastX = 0;
+        let lastY = 0;
 
-        // 欠落していた必須関数の補完
         function resizeCanvas() {
             if(canvas) {
                 canvas.width = canvas.parentElement.clientWidth;
@@ -510,6 +515,8 @@
         }
 
         function startDay() {
+            if (msgBox) msgBox.style.display = 'none'; // フェードイン時にメッセージを確実に消す
+            
             if (currentDayIdx >= dailyData.length) {
                 evaluateEnding();
                 return;
@@ -551,6 +558,7 @@
             if (msgBox) msgBox.style.display = 'none';
             phase = 'draw';
             tickleGauge = 0;
+            currentStrokes = 0; // 画数をリセット
             timeRemaining = choice.req * 2000;
             warningShown = false;
             currentChoice = choice;
@@ -566,8 +574,81 @@
             if (finishBtn) finishBtn.style.display = 'block';
         }
 
+        // 描画ロジックの再実装
+        function startDrawing(e) {
+            if (phase !== 'draw') return;
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            lastX = clientX - rect.left;
+            lastY = clientY - rect.top;
+        }
+
+        function draw(e) {
+            if (!isDrawing || phase !== 'draw') return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
+            if (ctx) {
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.strokeStyle = '#D84315';
+                ctx.lineWidth = 6;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+            }
+
+            sensitiveAreas.forEach(area => {
+                const cx = area.x * canvas.width;
+                const cy = area.y * canvas.height;
+                const cr = area.r * canvas.width;
+                const dist = Math.hypot(x - cx, y - cy);
+                if (dist < cr) {
+                    tickleGauge += 0.5;
+                    if(touchGain) {
+                        touchGain.gain.value = 0.5;
+                        setTimeout(() => touchGain.gain.value = 0, 100);
+                    }
+                }
+            });
+
+            lastX = x;
+            lastY = y;
+        }
+
+        function stopDrawing(e) {
+            if (!isDrawing || phase !== 'draw') return;
+            isDrawing = false;
+            currentStrokes++;
+            if (strokeCounter && currentChoice) {
+                const remain = Math.max(0, currentChoice.req - currentStrokes);
+                strokeCounter.innerText = `残り: ${remain} 画`;
+            }
+        }
+
+        if (canvas) {
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            canvas.addEventListener('touchstart', startDrawing, {passive: false});
+            canvas.addEventListener('touchmove', draw, {passive: false});
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+
         function completeDrawPhase() {
-            endDrawPhase(true);
+            // 画数が足りているかどうかの判定を追加
+            if (currentChoice && currentStrokes >= currentChoice.req) {
+                endDrawPhase(true);
+            } else {
+                showDynamicWarning("「まだ書き終わってないみたいだけど？」", 1500);
+            }
         }
 
         function failDrawPhase() {

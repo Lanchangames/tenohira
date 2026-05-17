@@ -58,7 +58,7 @@
         #badge-box {
             background-color: rgba(255, 255, 255, 0.85);
             border: 2px dashed #FFAB91; 
-            border-radius: 20px; /* 丸み復旧 */
+            border-radius: 0;
             padding: 15px;
             width: 80%;
             margin-bottom: 30px;
@@ -87,7 +87,7 @@
         .badge {
             width: 38px;
             height: 38px;
-            border-radius: 50%; /* 丸み復旧 */
+            border-radius: 0;
             background-color: #FFF;
             border: 2px solid #FFE0B2;
             display: flex;
@@ -128,7 +128,7 @@
             height: 55px;
             background-color: #FF8A65;
             border: none; 
-            border-radius: 30px; /* 丸み復旧 */
+            border-radius: 0;
             color: #FFF;
             font-size: 18px;
             font-weight: bold;
@@ -148,7 +148,7 @@
             color: #5D4037;
             background-color: rgba(255, 255, 255, 0.95);
             padding: 20px 15px;
-            border-radius: 20px; /* 丸み復旧 */
+            border-radius: 0;
             border: 2px dashed #FFAB91;
             width: 85%;
             font-size: 14px;
@@ -297,7 +297,7 @@
             height: 25%;
             background-color: rgba(255, 255, 255, 0.95);
             border: 3px solid #FFAB91; 
-            border-radius: 20px; /* 丸み復旧 */
+            border-radius: 0;
             padding: 18px;
             box-sizing: border-box;
             z-index: 3;
@@ -332,7 +332,7 @@
             background-color: #FF8A65;
             border: none;
             color: white;
-            border-radius: 30px; /* 丸み復旧 */
+            border-radius: 0;
             z-index: 4;
             display: none;
             font-family: inherit;
@@ -419,7 +419,7 @@
         </div>
 
         <div id="custom-modal" class="screen" style="background-color: rgba(62, 39, 35, 0.8); z-index: 100;">
-            <div style="background-color: #FFF3E0; border: 3px dashed #FFAB91; border-radius: 20px; padding: 25px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; color: #5D4037;">
+            <div style="background-color: #FFF3E0; border: 3px dashed #FFAB91; border-radius: 0; padding: 25px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; color: #5D4037;">
                 <p id="modal-text" style="font-size: 15px; font-weight: bold; line-height: 1.6; margin-top: 0;"></p>
                 <div id="modal-buttons" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;"></div>
             </div>
@@ -530,37 +530,81 @@
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
-            msgBox.onclick = advanceText;
-            resizeCanvas(); 
-            drawInstruction.style.display = 'none'; gaugeLabel.style.display = 'none'; gaugeContainer.style.display = 'none';
-            strokeCounter.style.display = 'none'; timeCounter.style.display = 'none'; warningText.style.opacity = '0';
-            finishBtn.style.display = 'none'; choiceOverlay.style.display = 'none';
+            
+            const msgBoxEl = document.getElementById('message-box');
+            if (msgBoxEl && typeof advanceText === 'function') {
+                msgBoxEl.onclick = advanceText;
+            }
+            
+            if (typeof resizeCanvas === 'function') resizeCanvas(); 
+            document.getElementById('draw-instruction').style.display = 'none'; 
+            document.getElementById('gauge-label').style.display = 'none'; 
+            document.getElementById('gauge-container').style.display = 'none';
+            document.getElementById('stroke-counter').style.display = 'none'; 
+            document.getElementById('time-counter').style.display = 'none'; 
+            document.getElementById('warning-text').style.opacity = '0';
+            document.getElementById('finish-btn').style.display = 'none'; 
+            document.getElementById('choice-overlay').style.display = 'none';
             document.getElementById('blush-overlay').style.opacity = '0';
-            ctx.fillStyle = '#FFF9F5'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if (typeof ctx !== 'undefined') {
+                ctx.fillStyle = '#FFF9F5'; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            
             let resultText = generateEndingText(id);
             resultText.unshift(`エンディング${id}を再生します`);
             resultText.push("〜 閲覧終了 〜"); resultText.push("〜 タイトルに戻ります 〜");
-            playText(resultText, () => {
-                nextMark.style.display = 'none'; 
-                msgBox.onclick = () => { msgBox.onclick = advanceText; showTitle(); };
-            });
+            
+            if (typeof playText === 'function') {
+                playText(resultText, () => {
+                    const nm = document.getElementById('next-mark');
+                    if(nm) nm.style.display = 'none'; 
+                    if(msgBoxEl) {
+                        msgBoxEl.onclick = () => { 
+                            if(typeof advanceText === 'function') msgBoxEl.onclick = advanceText; 
+                            showTitle(); 
+                        };
+                    }
+                });
+            }
         }
 
-        // はじめからボタンの修正：startDay() を呼び出すように変更
         function startGame() {
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
-            msgBox.onclick = advanceText;
-            playerAffection = 0;
-            currentDayIdx = 0;
-            choiceHistory = [];
-            resizeCanvas();
-            if (!isGameLoopRunning) {
-                isGameLoopRunning = true;
-                requestAnimationFrame(gameLoop);
+            
+            // 安全なDOM参照と関数の存在チェックによる進行不可バグの回避
+            const msgBoxEl = document.getElementById('message-box');
+            if (msgBoxEl && typeof advanceText === 'function') {
+                msgBoxEl.onclick = advanceText;
             }
-            startDay(); // これが不足していたため物語が進まなくなっていました
+            
+            window.playerAffection = 0;
+            window.currentDayIdx = 0;
+            window.choiceHistory = [];
+            
+            if (typeof resizeCanvas === 'function') resizeCanvas();
+            
+            if (typeof window.isGameLoopRunning === 'undefined' || !window.isGameLoopRunning) {
+                window.isGameLoopRunning = true;
+                if (typeof gameLoop === 'function') {
+                    requestAnimationFrame(gameLoop);
+                }
+            }
+            
+            if (typeof startDay === 'function') {
+                startDay();
+            } else if (typeof playText === 'function') {
+                // startDayが未定義でも最低限テキストを開始するフォールバック
+                const day = dailyData[0];
+                if (day && day.intro) {
+                    playText([...day.intro], () => {
+                        if (typeof showChoices === 'function') showChoices(day.choices);
+                    });
+                }
+            }
         }
 
         const dailyData = [
@@ -848,10 +892,20 @@
                 resultText.push(endingHints[hintId]);
             }
             resultText.push("〜 タイトルに戻ります 〜");
-            playText(resultText, () => {
-                nextMark.style.display = 'none'; 
-                msgBox.onclick = () => { msgBox.onclick = advanceText; showTitle(); };
-            });
+            
+            if (typeof playText === 'function') {
+                playText(resultText, () => {
+                    const nm = document.getElementById('next-mark');
+                    if (nm) nm.style.display = 'none'; 
+                    const msgBoxEl = document.getElementById('message-box');
+                    if (msgBoxEl) {
+                        msgBoxEl.onclick = () => { 
+                            if (typeof advanceText === 'function') msgBoxEl.onclick = advanceText; 
+                            showTitle(); 
+                        };
+                    }
+                });
+            }
         }
         
         window.addEventListener('DOMContentLoaded', showTitle);
@@ -861,29 +915,59 @@
         window.addEventListener('keydown', () => {
             const now = performance.now(); typingStrokes.push(now);
             typingStrokes = typingStrokes.filter(t => now - t < 2000);
-            if(phase === 'draw') tickleGauge += (typingStrokes.length / 2) * 1.5;
+            if (typeof phase !== 'undefined' && phase === 'draw') {
+                if (typeof tickleGauge !== 'undefined') tickleGauge += (typingStrokes.length / 2) * 1.5;
+            }
         });
         const sensitiveAreas = [{ x: 0.25, y: 0.35, r: 0.12 }, { x: 0.75, y: 0.55, r: 0.15 }];
 
         function gameLoop(timestamp) {
-            if (phase === 'draw') {
-                if (!lastTime) lastTime = timestamp;
-                let dt = timestamp - lastTime; lastTime = timestamp;
-                timeRemaining -= dt;
-                timeCounter.innerText = `残り時間: ${Math.max(0, timeRemaining / 1000).toFixed(1)}秒`;
-                tickleGauge = Math.max(0, tickleGauge - 0.3);
-                gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
-                blushOverlay.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
-                if (!warningShown) {
-                    if (timeRemaining <= 4000) showDynamicWarning("「……時間、まだ？」", 2000);
-                    else if (tickleGauge >= 90) showDynamicWarning("「待って、そこ…っ」", 1500);
-                    else if (tickleGauge >= 60) showDynamicWarning("「ちょっと…」", 1500);
-                    else if (tickleGauge >= 30 && Math.random() < 0.02) showDynamicWarning("「ふふ、くすぐったい」", 1500);
+            if (typeof phase !== 'undefined' && phase === 'draw') {
+                if (typeof window.lastTime === 'undefined' || !window.lastTime) window.lastTime = timestamp;
+                let dt = timestamp - window.lastTime; window.lastTime = timestamp;
+                
+                if (typeof timeRemaining !== 'undefined') {
+                    timeRemaining -= dt;
+                    const tc = document.getElementById('time-counter');
+                    if(tc) tc.innerText = `残り時間: ${Math.max(0, timeRemaining / 1000).toFixed(1)}秒`;
                 }
-                if (timeRemaining <= 0 || tickleGauge >= 100) failDrawPhase();
-                ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            } else { lastTime = timestamp; }
-            if (isGameLoopRunning) requestAnimationFrame(gameLoop);
+                
+                if (typeof tickleGauge !== 'undefined') {
+                    tickleGauge = Math.max(0, tickleGauge - 0.3);
+                    const gb = document.getElementById('gauge-bar');
+                    if(gb) gb.style.width = Math.min(100, tickleGauge) + '%';
+                    
+                    const bo = document.getElementById('blush-overlay');
+                    if(bo) bo.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
+                    
+                    if (typeof warningShown !== 'undefined' && !warningShown) {
+                        if (typeof timeRemaining !== 'undefined' && timeRemaining <= 4000) {
+                            if(typeof showDynamicWarning === 'function') showDynamicWarning("「……時間、まだ？」", 2000);
+                        }
+                        else if (tickleGauge >= 90) {
+                            if(typeof showDynamicWarning === 'function') showDynamicWarning("「待って、そこ…っ」", 1500);
+                        }
+                        else if (tickleGauge >= 60) {
+                            if(typeof showDynamicWarning === 'function') showDynamicWarning("「ちょっと…」", 1500);
+                        }
+                        else if (tickleGauge >= 30 && Math.random() < 0.02) {
+                            if(typeof showDynamicWarning === 'function') showDynamicWarning("「ふふ、くすぐったい」", 1500);
+                        }
+                    }
+                    if ((typeof timeRemaining !== 'undefined' && timeRemaining <= 0) || tickleGauge >= 100) {
+                        if(typeof failDrawPhase === 'function') failDrawPhase();
+                    }
+                }
+                if (typeof ctx !== 'undefined' && typeof canvas !== 'undefined') {
+                    ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; 
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+            } else { 
+                window.lastTime = timestamp; 
+            }
+            if (typeof window.isGameLoopRunning !== 'undefined' && window.isGameLoopRunning) {
+                requestAnimationFrame(gameLoop);
+            }
         }
     </script>
 </body>

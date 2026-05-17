@@ -393,7 +393,7 @@
                 <p>③ 制限時間内に「目標画数」をすべて書き終えると成功！</p>
                 <p>④ 難易度が高いほど好感度が上がります。</p>
                 <p>⑤ 手のひらには「敏感な場所」が隠されています。そこをなぞると、くすぐったさが急上昇するので要注意！</p>
-                <p>★ エンディングは全部で10種類。特定の選択肢を選び続けると特別な結末が…？</p>
+                <p>★ エンディングは全部で10種類。特定の選択肢を選び続けると特別な結末が…?</p>
                 <p>🔑 同じEDに再度到達すると「てのひらの鍵」が手に入り、未解放EDをアンロックできます。</p>
             </div>
             <div class="button-group">
@@ -575,7 +575,7 @@
                 strokeCounter.innerText = `残り: ${choice.req} 画`;
             }
             if (timeCounter) timeCounter.style.display = 'block';
-            if (finishBtn) finishBtn.style.display = 'block';
+            if (finishBtn) finishBtn.style.display = 'none'; // 画数を満たすまでは非表示にする
         }
 
         // 描画ロジック
@@ -633,6 +633,11 @@
             if (strokeCounter && currentChoice) {
                 const remain = Math.max(0, currentChoice.req - currentStrokes);
                 strokeCounter.innerText = `残り: ${remain} 画`;
+                
+                // 指定の目標画数を満たした場合にのみ、書き終えるボタンを出現させる
+                if (currentStrokes >= currentChoice.req) {
+                    if (finishBtn) finishBtn.style.display = 'block';
+                }
             }
         }
 
@@ -855,7 +860,7 @@
                 ], 
                 fail: [
                     "「あーっ！ もう限界！」",
-                    "（手のひらは敏感なんだ、と彼はムスッとしている。次こそは……）"
+                    "（手のひらは敏感んだ、と彼はムスッとしている。次こそは……）"
                 ]
             },
             { 

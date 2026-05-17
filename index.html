@@ -58,7 +58,7 @@
         #badge-box {
             background-color: rgba(255, 255, 255, 0.85);
             border: 2px dashed #FFAB91; 
-            border-radius: 15px;
+            border-radius: 12px;
             padding: 15px;
             width: 80%;
             margin-bottom: 30px;
@@ -128,7 +128,7 @@
             height: 55px;
             background-color: #FF8A65;
             border: none; 
-            border-radius: 25px;
+            border-radius: 30px;
             color: #FFF;
             font-size: 18px;
             font-weight: bold;
@@ -148,7 +148,7 @@
             color: #5D4037;
             background-color: rgba(255, 255, 255, 0.95);
             padding: 20px 15px;
-            border-radius: 15px;
+            border-radius: 12px;
             border: 2px dashed #FFAB91;
             width: 85%;
             font-size: 14px;
@@ -297,7 +297,7 @@
             height: 25%;
             background-color: rgba(255, 255, 255, 0.95);
             border: 3px solid #FFAB91; 
-            border-radius: 15px;
+            border-radius: 12px;
             padding: 18px;
             box-sizing: border-box;
             z-index: 3;
@@ -332,7 +332,7 @@
             background-color: #FF8A65;
             border: none;
             color: white;
-            border-radius: 25px;
+            border-radius: 30px;
             z-index: 4;
             display: none;
             font-family: inherit;
@@ -427,165 +427,6 @@
     </div>
 
     <script>
-        // --- 欠落していたゲーム進行用の必須関数群 ---
-        const canvas = document.getElementById('canvas-layer');
-        const ctx = canvas ? canvas.getContext('2d') : null;
-        const msgBox = document.getElementById('message-box');
-        const msgText = document.getElementById('message-text');
-        const nextMark = document.getElementById('next-mark');
-        const choiceOverlay = document.getElementById('choice-overlay');
-        const choicesContainer = document.getElementById('choices-container');
-        const finishBtn = document.getElementById('finish-btn');
-        const drawInstruction = document.getElementById('draw-instruction');
-        const gaugeLabel = document.getElementById('gauge-label');
-        const gaugeContainer = document.getElementById('gauge-container');
-        const gaugeBar = document.getElementById('gauge-bar');
-        const strokeCounter = document.getElementById('stroke-counter');
-        const timeCounter = document.getElementById('time-counter');
-        const warningText = document.getElementById('warning-text');
-        const blushOverlay = document.getElementById('blush-overlay');
-
-        let currentTextSequence = [];
-        let textCallback = null;
-        let phase = 'title';
-        let currentDayIdx = 0;
-        let playerAffection = 0;
-        let choiceHistory = [];
-        let timeRemaining = 0;
-        let tickleGauge = 0;
-        let warningShown = false;
-        let lastTime = 0;
-        let isGameLoopRunning = false;
-        let currentChoice = null;
-
-        function resizeCanvas() {
-            if(canvas) {
-                canvas.width = canvas.parentElement.clientWidth;
-                canvas.height = canvas.parentElement.clientHeight;
-            }
-        }
-
-        function playText(texts, onComplete) {
-            currentTextSequence = [...texts];
-            textCallback = onComplete;
-            phase = 'text';
-            if (msgBox) msgBox.style.display = 'flex';
-            advanceText();
-        }
-
-        function advanceText() {
-            if (currentTextSequence.length === 0) {
-                if (textCallback) {
-                    let cb = textCallback;
-                    textCallback = null;
-                    cb();
-                }
-                return;
-            }
-            if (msgText) msgText.innerHTML = currentTextSequence.shift();
-            if (nextMark) nextMark.style.display = currentTextSequence.length > 0 ? 'block' : 'none';
-        }
-
-        function startDay() {
-            if (currentDayIdx >= dailyData.length) {
-                evaluateEnding();
-                return;
-            }
-            const day = dailyData[currentDayIdx];
-            const transition = document.getElementById('day-transition');
-            if (transition) {
-                transition.innerText = day.label;
-                transition.style.opacity = '1';
-                setTimeout(() => {
-                    transition.style.opacity = '0';
-                    setTimeout(() => {
-                        playText(day.intro, () => {
-                            if (day.choices) showChoices(day.choices);
-                            else evaluateEnding(); 
-                        });
-                    }, 1000);
-                }, 2000);
-            }
-        }
-
-        function showChoices(choices) {
-            phase = 'choice';
-            if (choiceOverlay) choiceOverlay.style.display = 'flex';
-            if (choicesContainer) {
-                choicesContainer.innerHTML = '';
-                choices.forEach(c => {
-                    const btn = document.createElement('button');
-                    btn.className = 'menu-btn';
-                    btn.innerText = c.text;
-                    btn.onclick = () => startDrawPhase(c);
-                    choicesContainer.appendChild(btn);
-                });
-            }
-        }
-
-        function startDrawPhase(choice) {
-            if (choiceOverlay) choiceOverlay.style.display = 'none';
-            if (msgBox) msgBox.style.display = 'none';
-            phase = 'draw';
-            tickleGauge = 0;
-            timeRemaining = choice.req * 2000;
-            warningShown = false;
-            currentChoice = choice;
-            
-            if (drawInstruction) drawInstruction.style.display = 'block';
-            if (gaugeLabel) gaugeLabel.style.display = 'block';
-            if (gaugeContainer) gaugeContainer.style.display = 'block';
-            if (strokeCounter) {
-                strokeCounter.style.display = 'block';
-                strokeCounter.innerText = `残り: ${choice.req} 画`;
-            }
-            if (timeCounter) timeCounter.style.display = 'block';
-            if (finishBtn) finishBtn.style.display = 'block';
-        }
-
-        function completeDrawPhase() {
-            endDrawPhase(true);
-        }
-
-        function failDrawPhase() {
-            endDrawPhase(false);
-        }
-
-        function endDrawPhase(success) {
-            phase = 'text';
-            if (drawInstruction) drawInstruction.style.display = 'none';
-            if (gaugeLabel) gaugeLabel.style.display = 'none';
-            if (gaugeContainer) gaugeContainer.style.display = 'none';
-            if (strokeCounter) strokeCounter.style.display = 'none';
-            if (timeCounter) timeCounter.style.display = 'none';
-            if (finishBtn) finishBtn.style.display = 'none';
-            if (blushOverlay) blushOverlay.style.opacity = '0';
-            
-            choiceHistory.push({ diff: currentChoice.diff, success: success });
-            if (success) playerAffection += currentChoice.reward;
-            
-            const day = dailyData[currentDayIdx];
-            const texts = success ? day.success : day.fail;
-            
-            playText(texts || ["……"], () => {
-                currentDayIdx++;
-                startDay();
-            });
-        }
-
-        function showDynamicWarning(text, duration) {
-            warningShown = true;
-            if (warningText) {
-                warningText.innerText = text;
-                warningText.style.opacity = '1';
-                setTimeout(() => {
-                    warningText.style.opacity = '0';
-                    warningShown = false;
-                }, duration);
-            }
-        }
-        // --- 必須関数群 ここまで ---
-
         let unlockedEndings = [];
         let playerKeys = 0;
 
@@ -689,215 +530,41 @@
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
-            
-            if (msgBox) msgBox.onclick = advanceText;
-            
+            msgBox.onclick = advanceText;
             resizeCanvas(); 
-            if (drawInstruction) drawInstruction.style.display = 'none'; 
-            if (gaugeLabel) gaugeLabel.style.display = 'none'; 
-            if (gaugeContainer) gaugeContainer.style.display = 'none';
-            if (strokeCounter) strokeCounter.style.display = 'none'; 
-            if (timeCounter) timeCounter.style.display = 'none'; 
-            if (warningText) warningText.style.opacity = '0';
-            if (finishBtn) finishBtn.style.display = 'none'; 
-            if (choiceOverlay) choiceOverlay.style.display = 'none';
-            if (blushOverlay) blushOverlay.style.opacity = '0';
-            
-            if (ctx) {
-                ctx.fillStyle = '#FFF9F5'; 
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
-            
+            drawInstruction.style.display = 'none'; gaugeLabel.style.display = 'none'; gaugeContainer.style.display = 'none';
+            strokeCounter.style.display = 'none'; timeCounter.style.display = 'none'; warningText.style.opacity = '0';
+            finishBtn.style.display = 'none'; choiceOverlay.style.display = 'none';
+            document.getElementById('blush-overlay').style.opacity = '0';
+            ctx.fillStyle = '#FFF9F5'; ctx.fillRect(0, 0, canvas.width, canvas.height);
             let resultText = generateEndingText(id);
             resultText.unshift(`エンディング${id}を再生します`);
             resultText.push("〜 閲覧終了 〜"); resultText.push("〜 タイトルに戻ります 〜");
-            
             playText(resultText, () => {
-                if(nextMark) nextMark.style.display = 'none'; 
-                if(msgBox) {
-                    msgBox.onclick = () => { 
-                        msgBox.onclick = advanceText; 
-                        showTitle(); 
-                    };
-                }
+                nextMark.style.display = 'none'; 
+                msgBox.onclick = () => { msgBox.onclick = advanceText; showTitle(); };
             });
         }
 
-        function startGame() {
-            initAudio();
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById('game-screen').classList.add('active');
-            
-            if (msgBox) msgBox.onclick = advanceText;
-            
-            playerAffection = 0;
-            currentDayIdx = 0;
-            choiceHistory = [];
-            
-            resizeCanvas();
-            
-            if (!isGameLoopRunning) {
-                isGameLoopRunning = true;
-                requestAnimationFrame(gameLoop);
-            }
-            
-            startDay();
-        }
-
         const dailyData = [
-            { 
-                day: 1, 
-                label: "１日目", 
-                intro: [
-                    "【プロローグ】",
-                    "まだ外は冷たい風が吹いているけれど、部屋の中は暖炉の火が優しく揺れている。",
-                    "ふと隣を見ると、彼が少しだけ疲れたような、でも穏やかな顔でソファーにもたれていた。",
-                    "言葉に出して伝えるのは、なんだか照れくさくて、いつもはぐらかしてしまう私。",
-                    "でも、今のこの静かな時間なら、少しだけ素直になれる気がした。",
-                    "「ねえ……」と声をかけると、彼はゆっくりとこちらを向いた。",
-                    "【１日目】",
-                    "「……ん？ なんだよ」",
-                    "彼はいつものように、少しぶっきらぼうだけど優しい声で応える。",
-                    "「……ほら、手。貸して」",
-                    "私がそう言うと、彼は不思議そうな顔をしながらも、大きな手を差し出してくれた。",
-                    "（……この温かい手に、文字を書いてみたら、私の気持ち、少しは伝わるかな？）",
-                    "（手始めに、なんて書いてみよう？）"
-                ], 
-                choices: [
-                    { text: "「あ」", req: 3, reward: 1, diff: 0 },
-                    { text: "「ねえ」", req: 6, reward: 2, diff: 1 },
-                    { text: "「おつかれ」", req: 9, reward: 3, diff: 2 }
-                ], 
-                success: [
-                    "「……ん。なんか, 悪くないな」",
-                    "彼は目を伏せたまま、小さく息を吐いた。",
-                    "抵抗されるかと思ったけれど、大人しく私の指先の動きを受け入れている。",
-                    "（指先から伝わる彼の体温が、私の手にもじんわりと移ってくる……）"
-                ], 
-                fail: [
-                    "「っ、ちょ！ くすぐったい！」",
-                    "彼はビクッと肩を跳ねさせて、慌てて手を引っ込めた。",
-                    "「お前、絶対わざと変なとこ触っただろ……」",
-                    "（少しだけむくれている彼。不器用な反応が可愛い。……また明日、試してみよう）"
-                ]
-            },
-            { 
-                day: 2, 
-                label: "２日目", 
-                intro: [
-                    "翌日の夜。",
-                    "「……あんま、くすぐったくすんなよ」",
-                    "文句を言いながらも、彼は自分から自然に手を差し出してくれた。",
-                    "昨日よりも少しだけ、彼との距離が近くなった気がする。",
-                    "（今日はもう少しだけ、踏み込んだことを書いてみようかな）",
-                    "（彼には内緒の、小さなメッセージ……）"
-                ], 
-                choices: [
-                    { text: "「い」", req: 2, reward: 1, diff: 0 },
-                    { text: "「いつも」", req: 6, reward: 2, diff: 1 },
-                    { text: "「きもちいい」", req: 14, reward: 3, diff: 2 }
-                ], 
-                success: [
-                    "「……お前、手あったかいな」",
-                    "ぽつりと呟いた彼の耳が、少しだけ赤くなっている気がした。",
-                    "視線を逸らしながらも、私の指の感触を確かめるように彼の手がピクッと動く。",
-                    "（……ちゃんと、伝わっているのかな）"
-                ], 
-                fail: [
-                    "「あーっ！ もう限界！」",
-                    "彼は耐えきれないというように、ギュッと手を握りこんでしまった。",
-                    "「お前、指先の動きが独特すぎるんだよ……」",
-                    "（手のひらはやっぱり敏感なんだ。明日はもっと気をつけよう……）"
-                ]
-            },
-            { 
-                day: 3, 
-                label: "３日目", 
-                intro: [
-                    "３日目の夜。",
-                    "今日は彼の方から無言で、スッと手が差し出された。",
-                    "何も言わないけれど、私の指先を待ってくれているのがわかる。",
-                    "その不器用な優しさが嬉しくて、私はそっと彼の手を取った。",
-                    "（今日は、もう少し長めに……しっかりと気持ちを乗せて書いてみようかな）"
-                ], 
-                choices: [
-                    { text: "「し」", req: 1, reward: 1, diff: 0 },
-                    { text: "「がんばれ」", req: 13, reward: 2, diff: 1 },
-                    { text: "「ありがとう」", req: 14, reward: 3, diff: 2 }
-                ], 
-                success: [
-                    "「……もっと、続けてもいいぞ」",
-                    "そっぽを向きながら、彼が小さな声で言った。",
-                    "その言葉に、私の胸の奥がぎゅっと締め付けられる。",
-                    "（彼も、私と同じようにこの時間を愛おしいと思ってくれているみたい）"
-                ], 
-                fail: [
-                    "「……っ、ん、やっぱ無理！！」",
-                    "私の指が動くたびに、彼がビクビクと震えてとうとう手を離してしまった。",
-                    "「悪い、俺こういうのほんとダメだ……」",
-                    "（変に力が入ってしまったみたい。もどかしいけれど、このやり取りも悪くないかも）"
-                ]
-            },
-            { 
-                day: 4, 
-                label: "４日目", 
-                intro: [
-                    "４日目。",
-                    "「……最近、お前のマッサージがないと落ち着かないかも」",
-                    "ソファーの隣に座るなり、無自覚にそんな甘いことを言う彼。",
-                    "心臓が破裂しそうになるのを隠して、私は彼の手を両手で包み込んだ。",
-                    "（今日こそ、もっと踏み込んだ言葉を……）",
-                    "（明日の最終日に繋がるような、私の気持ちを）"
-                ], 
-                choices: [
-                    { text: "「て」", req: 1, reward: 1, diff: 0 },
-                    { text: "「あしたも」", req: 11, reward: 2, diff: 1 },
-                    { text: "「ずっといっしょ」", req: 13, reward: 3, diff: 2 }
-                ], 
-                success: [
-                    "「……ん。なんか、すごく落ち着く」",
-                    "彼の手から力が抜け、完全に私に身を委ねてくれている。",
-                    "確かな温もりが、私たちの間の言葉の壁を少しずつ溶かしていく。",
-                    "（いよいよ明日は、一番伝えたいことを……）"
-                ], 
-                fail: [
-                    "「あーもう、ごめん！ 限界！！」",
-                    "彼は顔を真っ赤にして、バツが悪そうに頭を掻いた。",
-                    "「なんか、お前に触られてると変な感じすんだよ……」",
-                    "（あともう少しだったのに！ でも、彼の照れた顔が見られたからいっか）"
-                ]
-            },
-            { 
-                day: 5, 
-                label: "最終日", 
-                intro: [
-                    "そして、５日目の夜。",
-                    "いつものように手を差し出した彼は、今日は私の目から視線を外さなかった。",
-                    "「お前が何書きたいのか、ちゃんと知りたい。教えてくれ」",
-                    "彼の真剣な眼差し。もう誤魔化しはきかない。",
-                    "今まで積み重ねてきた時間が、今のこの瞬間のためにあったんだと思える。",
-                    "（彼の手のひらに、私の本当の想いを……なんて書こう？）",
-                    "（これが、最後のメッセージ）"
-                ], 
-                choices: [
-                    { text: "「る」", req: 1, reward: 2, diff: 0 },
-                    { text: "「だいすき」", req: 15, reward: 4, diff: 1 },
-                    { text: "「あいしてる」", req: 8, reward: 6, diff: 2 }
-                ] 
-            }
+            { day: 1, label: "１日目", intro: ["夕食後の穏やかな時間。パチパチと暖炉の火が爆ぜる音が部屋に響いている。","「……ほら、手。貸して」","（……この手に、文字を書いてみたら、少しは伝わるかな？）","（手始めに、なんて書いてみよう？）"], choices: [{ text: "「あ」", req: 3, reward: 1, diff: 0 },{ text: "「ねえ」", req: 6, reward: 2, diff: 1 },{ text: "「おつかれ」", req: 9, reward: 3, diff: 2 }], success: ["「……ん。なんか、悪くないな」","（指先から伝わる彼の体温が、私の手にもじんわりと移ってくる）"], fail: ["「っ、ちょ！ くすぐったい！」","（慌てて手を引っ込められてしまった……また明日、試してみよう）"]},
+            { day: 2, label: "２日目", intro: ["翌日の夜。","「……あんま、くすぐったくすんなよ」","そう言いながらも、彼は自然に手を差し出してくれた。","（今日はもう少しだけ、踏み込んだことを書いてみようかな）"], choices: [{ text: "「い」", req: 2, reward: 1, diff: 0 },{ text: "「いつも」", req: 6, reward: 2, diff: 1 },{ text: "「きもちいい」", req: 14, reward: 3, diff: 2 }], success: ["「……お前、手あったかいな」","（ぽつりと呟いた彼の耳が、少し赤くなっている気がした）"], fail: ["「あーっ！ もう限界！」","（手のひらは敏感なんだ、と彼はムスッとしている。次こそは……）"]},
+            { day: 3, label: "３日目", intro: ["３日目の夜。今日は彼の方から無言で手が差し出された。","（今日は、少し長めに書いてみようかな……？）"], choices: [{ text: "「し」", req: 1, reward: 1, diff: 0 },{ text: "「がんばれ」", req: 13, reward: 2, diff: 1 },{ text: "「ありがとう」", req: 14, reward: 3, diff: 2 }], success: ["「……もっと、続けてもいいぞ」","（そっぽを向きながら言った彼の声に、胸の奥がぎゅっとする）"], fail: ["「……っ、ん、やっぱ無理！！」","（変に力が入ってしまった。もどかしいけれど、このやり取りも悪くないかも）"]},
+            { day: 4, label: "４日目", intro: ["４日目。","「……最近、お前のマッサージがないと落ち着かないかも」","無自覚にそんなことを言う彼に、心臓が破裂しそうだ。","（今日こそ、もっと踏み込んだ言葉を……）"], choices: [{ text: "「て」", req: 1, reward: 1, diff: 0 },{ text: "「あしたも」", req: 11, reward: 2, diff: 1 },{ text: "「ずっといっしょ」", req: 13, reward: 3, diff: 2 }], success: ["「……ん。なんか、すごく落ち着く」","（確かな温もりが伝わってくる。いよいよ明日は、一番伝えたいことを……）"], fail: ["「あーもう、ごめん！ 限界！！」","（あともう少しだったのに！ 彼の耳は真っ赤に染まっている）"]},
+            { day: 5, label: "最終日", intro: ["そして、５日目の夜。","「お前が何書きたいのか、ちゃんと知りたい。教えてくれ」","彼の真剣な眼差し。もう誤魔化しはきかない。","（彼の手のひらに、私の本当の想いを……なんて書こう？）"], choices: [{ text: "「る」", req: 1, reward: 2, diff: 0 },{ text: "「だいすき」", req: 15, reward: 4, diff: 1 },{ text: "「あいしてる」", req: 8, reward: 6, diff: 2 }] }
         ];
 
         const endingHints = {
-            1: "【ヒント】\nあまり欲張らず、短い言葉（低難易度）を中心に選んで接してみよう。\n慎重なあなたを、彼はどう受け止めるかな？",
-            2: "【ヒント】\n標準的な長さの言葉（中難易度）を選びつつ、時々失敗を混ぜてみよう。\n完璧じゃないやり取りに、等身大の優しさが見えるかも。",
-            3: "【ヒント】\n標準的な長さの言葉（中難易度）を選びつつ、なるべく成功させてみよう。\n心地よい距離感が、二人の心をシンクロさせるはず。",
-            4: "【ヒント】\n長い言葉（高難易度）に積極的に挑戦しつつ、時々失敗して彼を翻弄してみよう。\n余裕のなくなった彼が見られるかも……？",
-            5: "【ヒント】\n長い言葉（高難易度）に果敢に挑戦し、成功を積み重ねて想いを伝えきろう。\n真っ直ぐな想いは、最高の形で報われるはず。",
-            6: "【ヒント】\n毎日欠かさず、一番短い言葉（低難易度）だけを紡いで、すべて成功させてみよう。\n繋ぎ合わせた言葉が、一つの意味を持つかも……？",
-            7: "【ヒント】\n毎日欠かさず、標準的な言葉（中難易度）だけを選び、すべて成功させてみよう。\n安定した愛情表現が、特別な結末を呼ぶ。",
-            8: "【ヒント】\n毎日欠かさず、一番長い言葉（高難易度）だけを選び、すべて成功させてみよう。\n極限の集中力で愛を伝えた先にあるものは……。",
-            9: "【ヒント】\n5日間、一度も成功させずに終わってみよう。\n言葉にできないもどかしさが、別の形の幸せを運んでくる……？",
-            10: "【ヒント：Ending X】\nすべての記憶（他のエンディング）を取り戻した今、もう一度彼に触れてみよう。\nすべてを知るあなたにしか見えない景色がある。"
+            1: "【ヒント】あまり欲張らず、短い言葉（低難易度）を中心に選んで接してみよう。",
+            2: "【ヒント】標準的な長さの言葉（中難易度）を選びつつ、時々失敗を混ぜてみよう。",
+            3: "【ヒント】標準的な長さの言葉（中難易度）を選びつつ、なるべく成功させてみよう。",
+            4: "【ヒント】長い言葉（高難易度）に積極的に挑戦しつつ、時々失敗して彼を翻弄してみよう。",
+            5: "【ヒント】長い言葉（高難易度）に果敢に挑戦し、成功を積み重ねて想いを伝えきろう。",
+            6: "【ヒント】毎日欠かさず、一番短い言葉（低難易度）だけを紡いで、すべて成功させてみよう。",
+            7: "【ヒント】毎日欠かさず、標準的な言葉（中難易度）だけを選び、すべて成功させてみよう。",
+            8: "【ヒント】毎日欠かさず、一番長い言葉（高難易度）だけを選び、すべて成功させてみよう。",
+            9: "【ヒント】5日間、一度も成功させずに終わってみよう。言葉にできないもどかしさが、別の形に……？",
+            10: "【ヒント：Ending X】すべての記憶（他のエンディング）を取り戻した今、もう一度彼に触れてみよう。"
         };
 
         let audioCtx, touchGain;
@@ -907,9 +574,9 @@
             const bufferSize = audioCtx.sampleRate * 2;
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const output = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) output[i] = (Math.random() * 2 - 1) * 0.01;
+            for (let i = 0; i < bufferSize; i++) output[i] = (Math.random() * 2 - 1) * 0.03;
             const noise = audioCtx.createBufferSource(); noise.buffer = buffer; noise.loop = true;
-            const fireFilter = audioCtx.createBiquadFilter(); fireFilter.type = 'lowpass'; fireFilter.frequency.value = 150;
+            const fireFilter = audioCtx.createBiquadFilter(); fireFilter.type = 'lowpass'; fireFilter.frequency.value = 250;
             noise.connect(fireFilter); fireFilter.connect(audioCtx.destination); noise.start();
             const tBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const tOutput = tBuffer.getChannelData(0);
@@ -923,60 +590,76 @@
         function generateEndingText(earnedEndingId) {
             let resultText = [];
             resultText.push("書き終え、そっと指を離す。");
-            resultText.push("指先に残る微かな熱の余韻を感じながら、私は息を呑んだ。");
-            resultText.push("彼は自分の手のひらをじっと見つめ……やがて、私の手をぎゅっと、痛いくらいの力で握り返した。");
-            resultText.push("沈黙が落ちる。暖炉の薪が、パチッと心地よい音を立てて爆ぜた。");
+            resultText.push("彼は自分の手のひらを見つめ……やがて、私の手をぎゅっと握り返した。");
+            resultText.push("沈黙が落ちる。薪がパチッと音を立てた。");
 
             if (earnedEndingId === 1) {
                 resultText.push("【ED 1: ほのぼの不器用エンド】");
                 resultText.push("「……お前、本当に不器用だよな。短い言葉ばっか選んで、自信なさげにさ」");
-                resultText.push("彼は苦笑いしながら、空いた方の手で私の頭をポンポンと軽く叩いた。");
+                resultText.push("彼は苦笑いしながら、私の頭をポンポンと軽く叩いた。");
+                resultText.push("慎重になりすぎていた私を、彼はすべて見透かしていたみたいだ。");
+                resultText.push("「でも、その迷ってる感じが、お前らしくて嫌いじゃないよ」");
                 resultText.push("繋いだ手から伝わってくる彼の体温が、何よりも確かな答えのような気がした。");
             } else if (earnedEndingId === 2) {
                 resultText.push("【ED 2: 優しい両思いエンド】");
                 resultText.push("「……何日かかけて、ようやくわかったよ。不器用なりに、色々伝えてくれてたんだな」");
                 resultText.push("彼は目を細め、どこか愛おしそうに私の手を見つめている。");
+                resultText.push("中くらいの、なんでもない言葉を並べていたつもりだったけれど。");
                 resultText.push("「失敗して赤くなってんの見てたらさ、俺まで恥ずかしくなってきただろ」");
+                resultText.push("彼の耳が赤くなっているのを見て、私も思わず頬が熱くなった。");
             } else if (earnedEndingId === 3) {
                 resultText.push("【ED 3: ぴったりシンクロエンド】");
                 resultText.push("「お前の温もりが、まっすぐ心に入ってくるみたいだった」");
-                resultText.push("彼は私の指を一本ずつ絡めるようにして、深く恋人繋ぎへと形を変えた。");
+                resultText.push("彼は私の指を一本ずつ絡めるようにして、恋人繋ぎへと形を変えた。");
+                resultText.push("「毎日、お前が次は何て書いてくれるのか、実はすぐにわかってたんだ」");
+                resultText.push("「え……じゃあ、気づかないふりしてたの？」");
                 resultText.push("「心地よくてさ。ずっとこうして、お前に触れられていたかったんだよ」");
+                resultText.push("甘い声と共に囁かれ、私はもう頷くことしかできなかった。");
             } else if (earnedEndingId === 4) {
                 resultText.push("【ED 4: 情熱的な甘やかしエンド】");
                 resultText.push("「……わざと焦らしてただろ。難しいことばっか書こうとして、失敗してさ」");
-                resultText.push("彼はふうっと熱っぽい溜息をつくと、私の手をぐいっと引き寄せた。");
+                resultText.push("彼はふうっと溜息をつくと、私の手をぐいっと引き寄せた。");
+                resultText.push("バランスを崩した私は、そのまま彼の胸の中にすっぽりと収まってしまう。");
                 resultText.push("「積極的なのはいいけど、お前が必死すぎて、俺ばっかり我慢させられて……ちょっと悔しい」");
+                resultText.push("耳元で低く響く彼の声に、全身が溶けてしまいそうだった。");
             } else if (earnedEndingId === 5) {
                 resultText.push("【ED 5: 溺愛の極みエンド】");
                 resultText.push("「お前が愛おしすぎて、どうにかなりそう。……長い文字、いっしょうけんめい書いてさ」");
                 resultText.push("彼は熱を帯びた瞳で私を見つめると、息が止まるほどの強さで抱きすくめた。");
+                resultText.push("伝えたいことが溢れて長い言葉ばかり選んでいた私の熱意は、確実に彼に届いていた。");
                 resultText.push("「これだけ真っ直ぐぶつけられたら、もう逃げられないだろ。……一生、離さないからな」");
+                resultText.push("誓いのようなその言葉に、私はただ涙を滲ませながら強く抱き返した。");
             } else if (earnedEndingId === 6) {
                 resultText.push("【ED 6: 特別ルート「あいしてる」】");
                 resultText.push("「あ、い、し、て、る……だろ？ まったく、1文字ずつ遠回りしやがって……」");
                 resultText.push("彼は呆れたように笑いながらも、その瞳はひどく優しかった。");
+                resultText.push("迷わずに短い文字だけを繋いできた私の「秘密のメッセージ」に、彼は最初から気づいていた。");
                 resultText.push("「……俺も、愛してる。明日からは、毎日ちゃんと言葉で言ってやるよ」");
             } else if (earnedEndingId === 7) {
                 resultText.push("【ED 7: 特別ルート「中難易度コンプ」】");
                 resultText.push("「毎日、丁度いい言葉ばかり並べやがって。……俺も、同じ気持ちだよ」");
-                resultText.push("彼は私の頬にそっと手を伸ばし、親指で優しく撫でた。");
+                resultText.push("彼は私の頬にそっと手を伸ばし、優しく撫でた。");
                 resultText.push("「踏み込みすぎず、でも離れすぎず……お前らしい、完璧な距離の詰め方だったよ」");
+                resultText.push("毎日確実に言葉を届けてきた安定感が、二人の絆を確かなものに変えていた。");
             } else if (earnedEndingId === 8) {
                 resultText.push("【ED 8: 特別ルート「高難易度コンプ」】");
                 resultText.push("「こんなに長い文字、よく毎日完璧に書けたな。……大好きだ、バカ」");
                 resultText.push("彼は感心したような、それでいて少し誇らしげな表情で私を見た。");
                 resultText.push("「毎日限界ギリギリまで俺を翻弄してさ。……お前以外に、こんなことできる奴いないよ」");
+                resultText.push("最高難易度の想いを受け止めた彼は、もう私なしの生活には戻れそうにない。");
             } else if (earnedEndingId === 9) {
                 resultText.push("【ED 9: 全失敗の優しいぬくもりエンド】");
                 resultText.push("結局、5日間一度もまともに文字を書けなかった私を見て、彼は吹き出した。");
+                resultText.push("「くすぐったいのは本当だけどさ。お前が毎回焦って失敗するの、面白くて……ごめん」");
+                resultText.push("意地悪そうに笑う彼を叩くと、そのまま腕を引かれ、温かい胸の中に閉じ込められた。");
                 resultText.push("「言葉なんてなくても、お前がいっしょうけんめい触れてくれただけで、十分伝わってるよ」");
             } else if (earnedEndingId === 10) {
                 resultText.push("【ED 10: Ending X】");
                 resultText.push("「すべての記憶を辿って、また俺の手を握ってくれたんだな。……ありがとう」");
+                resultText.push("これまでの数々の結末、すれ違った日々、そして結ばれた瞬間。");
+                resultText.push("すべてを知った上で、私はもう一度彼の隣に座り、この手をとった。");
                 resultText.push("「どんな結末になっても、俺の隣にはいつもお前がいてくれた。……もう、言葉なんてなくても伝わってるから」");
             }
-            resultText.push("（エンディングここまで）");
             return resultText;
         }
 
@@ -1029,74 +712,41 @@
                 resultText.push(endingHints[hintId]);
             }
             resultText.push("〜 タイトルに戻ります 〜");
-            
             playText(resultText, () => {
-                if (nextMark) nextMark.style.display = 'none'; 
-                if (msgBox) {
-                    msgBox.onclick = () => { 
-                        msgBox.onclick = advanceText; 
-                        showTitle(); 
-                    };
-                }
+                nextMark.style.display = 'none'; 
+                msgBox.onclick = () => { msgBox.onclick = advanceText; showTitle(); };
             });
         }
-        
-        window.addEventListener('DOMContentLoaded', showTitle);
     </script>
     <script>
+        // システムロジックの続き
         let typingStrokes = [];
         window.addEventListener('keydown', () => {
             const now = performance.now(); typingStrokes.push(now);
             typingStrokes = typingStrokes.filter(t => now - t < 2000);
-            if (typeof phase !== 'undefined' && phase === 'draw') {
-                if (typeof tickleGauge !== 'undefined') tickleGauge += (typingStrokes.length / 2) * 1.5;
-            }
+            if(phase === 'draw') tickleGauge += (typingStrokes.length / 2) * 1.5;
         });
         const sensitiveAreas = [{ x: 0.25, y: 0.35, r: 0.12 }, { x: 0.75, y: 0.55, r: 0.15 }];
 
         function gameLoop(timestamp) {
-            if (typeof phase !== 'undefined' && phase === 'draw') {
-                if (typeof window.lastTime === 'undefined' || !window.lastTime) window.lastTime = timestamp;
-                let dt = timestamp - window.lastTime; window.lastTime = timestamp;
-                
-                if (typeof timeRemaining !== 'undefined') {
-                    timeRemaining -= dt;
-                    if(timeCounter) timeCounter.innerText = `残り時間: ${Math.max(0, timeRemaining / 1000).toFixed(1)}秒`;
+            if (phase === 'draw') {
+                if (!lastTime) lastTime = timestamp;
+                let dt = timestamp - lastTime; lastTime = timestamp;
+                timeRemaining -= dt;
+                timeCounter.innerText = `残り時間: ${Math.max(0, timeRemaining / 1000).toFixed(1)}秒`;
+                tickleGauge = Math.max(0, tickleGauge - 0.3);
+                gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
+                blushOverlay.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
+                if (!warningShown) {
+                    if (timeRemaining <= 4000) showDynamicWarning("「……時間、まだ？」", 2000);
+                    else if (tickleGauge >= 90) showDynamicWarning("「待って、そこ…っ」", 1500);
+                    else if (tickleGauge >= 60) showDynamicWarning("「ちょっと…」", 1500);
+                    else if (tickleGauge >= 30 && Math.random() < 0.02) showDynamicWarning("「ふふ、くすぐったい」", 1500);
                 }
-                
-                if (typeof tickleGauge !== 'undefined') {
-                    tickleGauge = Math.max(0, tickleGauge - 0.3);
-                    if(gaugeBar) gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
-                    if(blushOverlay) blushOverlay.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
-                    
-                    if (typeof warningShown !== 'undefined' && !warningShown) {
-                        if (typeof timeRemaining !== 'undefined' && timeRemaining <= 4000) {
-                            showDynamicWarning("「……時間、まだ？」", 2000);
-                        }
-                        else if (tickleGauge >= 90) {
-                            showDynamicWarning("「待って、そこ…っ」", 1500);
-                        }
-                        else if (tickleGauge >= 60) {
-                            showDynamicWarning("「ちょっと…」", 1500);
-                        }
-                        else if (tickleGauge >= 30 && Math.random() < 0.02) {
-                            showDynamicWarning("「ふふ、くすぐったい」", 1500);
-                        }
-                    }
-                    if ((typeof timeRemaining !== 'undefined' && timeRemaining <= 0) || tickleGauge >= 100) {
-                        failDrawPhase();
-                    }
-                }
-                if (typeof ctx !== 'undefined' && ctx && typeof canvas !== 'undefined') {
-                    ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; 
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                }
-            } else { 
-                window.lastTime = timestamp; 
-            }
-            if (typeof isGameLoopRunning !== 'undefined' && isGameLoopRunning) {
-                requestAnimationFrame(gameLoop);
-            }
+                if (timeRemaining <= 0 || tickleGauge >= 100) failDrawPhase();
+                ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else { lastTime = timestamp; }
+            if (isGameLoopRunning) requestAnimationFrame(gameLoop);
         }
     </script>
 </body>

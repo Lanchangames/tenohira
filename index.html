@@ -58,7 +58,7 @@
         #badge-box {
             background-color: rgba(255, 255, 255, 0.85);
             border: 2px dashed #FFAB91; 
-            border-radius: 0;
+            border-radius: 20px; /* 丸み復旧 */
             padding: 15px;
             width: 80%;
             margin-bottom: 30px;
@@ -87,7 +87,7 @@
         .badge {
             width: 38px;
             height: 38px;
-            border-radius: 50%;
+            border-radius: 50%; /* 丸み復旧 */
             background-color: #FFF;
             border: 2px solid #FFE0B2;
             display: flex;
@@ -128,7 +128,7 @@
             height: 55px;
             background-color: #FF8A65;
             border: none; 
-            border-radius: 0;
+            border-radius: 30px; /* 丸み復旧 */
             color: #FFF;
             font-size: 18px;
             font-weight: bold;
@@ -148,7 +148,7 @@
             color: #5D4037;
             background-color: rgba(255, 255, 255, 0.95);
             padding: 20px 15px;
-            border-radius: 0;
+            border-radius: 20px; /* 丸み復旧 */
             border: 2px dashed #FFAB91;
             width: 85%;
             font-size: 14px;
@@ -297,7 +297,7 @@
             height: 25%;
             background-color: rgba(255, 255, 255, 0.95);
             border: 3px solid #FFAB91; 
-            border-radius: 0;
+            border-radius: 20px; /* 丸み復旧 */
             padding: 18px;
             box-sizing: border-box;
             z-index: 3;
@@ -332,7 +332,7 @@
             background-color: #FF8A65;
             border: none;
             color: white;
-            border-radius: 0;
+            border-radius: 30px; /* 丸み復旧 */
             z-index: 4;
             display: none;
             font-family: inherit;
@@ -419,7 +419,7 @@
         </div>
 
         <div id="custom-modal" class="screen" style="background-color: rgba(62, 39, 35, 0.8); z-index: 100;">
-            <div style="background-color: #FFF3E0; border: 3px dashed #FFAB91; border-radius: 0; padding: 25px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; color: #5D4037;">
+            <div style="background-color: #FFF3E0; border: 3px dashed #FFAB91; border-radius: 20px; padding: 25px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; color: #5D4037;">
                 <p id="modal-text" style="font-size: 15px; font-weight: bold; line-height: 1.6; margin-top: 0;"></p>
                 <div id="modal-buttons" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;"></div>
             </div>
@@ -546,15 +546,21 @@
             });
         }
 
-        // 不足していたゲーム開始用の関数を追加
+        // はじめからボタンの修正：startDay() を呼び出すように変更
         function startGame() {
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
-            
-            // --------------------------------------------------
-            // ここからゲーム開始時の初期化ロジック等を繋げてください
-            // --------------------------------------------------
+            msgBox.onclick = advanceText;
+            playerAffection = 0;
+            currentDayIdx = 0;
+            choiceHistory = [];
+            resizeCanvas();
+            if (!isGameLoopRunning) {
+                isGameLoopRunning = true;
+                requestAnimationFrame(gameLoop);
+            }
+            startDay(); // これが不足していたため物語が進まなくなっていました
         }
 
         const dailyData = [
@@ -577,27 +583,12 @@
                     "（手始めに、なんて書いてみよう？）"
                 ], 
                 choices: [
-                    { 
-                        text: "「あ」", 
-                        req: 3, 
-                        reward: 1, 
-                        diff: 0 
-                    },
-                    { 
-                        text: "「ねえ」", 
-                        req: 6, 
-                        reward: 2, 
-                        diff: 1 
-                    },
-                    { 
-                        text: "「おつかれ」", 
-                        req: 9, 
-                        reward: 3, 
-                        diff: 2 
-                    }
+                    { text: "「あ」", req: 3, reward: 1, diff: 0 },
+                    { text: "「ねえ」", req: 6, reward: 2, diff: 1 },
+                    { text: "「おつかれ」", req: 9, reward: 3, diff: 2 }
                 ], 
                 success: [
-                    "「……ん。なんか、悪くないな」",
+                    "「……ん。なんか, 悪くないな」",
                     "彼は目を伏せたまま、小さく息を吐いた。",
                     "抵抗されるかと思ったけれど、大人しく私の指先の動きを受け入れている。",
                     "（指先から伝わる彼の体温が、私の手にもじんわりと移ってくる……）"
@@ -621,24 +612,9 @@
                     "（彼には内緒の、小さなメッセージ……）"
                 ], 
                 choices: [
-                    { 
-                        text: "「い」", 
-                        req: 2, 
-                        reward: 1, 
-                        diff: 0 
-                    },
-                    { 
-                        text: "「いつも」", 
-                        req: 6, 
-                        reward: 2, 
-                        diff: 1 
-                    },
-                    { 
-                        text: "「きもちいい」", 
-                        req: 14, 
-                        reward: 3, 
-                        diff: 2 
-                    }
+                    { text: "「い」", req: 2, reward: 1, diff: 0 },
+                    { text: "「いつも」", req: 6, reward: 2, diff: 1 },
+                    { text: "「きもちいい」", req: 14, reward: 3, diff: 2 }
                 ], 
                 success: [
                     "「……お前、手あったかいな」",
@@ -664,24 +640,9 @@
                     "（今日は、もう少し長めに……しっかりと気持ちを乗せて書いてみようかな）"
                 ], 
                 choices: [
-                    { 
-                        text: "「し」", 
-                        req: 1, 
-                        reward: 1, 
-                        diff: 0 
-                    },
-                    { 
-                        text: "「がんばれ」", 
-                        req: 13, 
-                        reward: 2, 
-                        diff: 1 
-                    },
-                    { 
-                        text: "「ありがとう」", 
-                        req: 14, 
-                        reward: 3, 
-                        diff: 2 
-                    }
+                    { text: "「し」", req: 1, reward: 1, diff: 0 },
+                    { text: "「がんばれ」", req: 13, reward: 2, diff: 1 },
+                    { text: "「ありがとう」", req: 14, reward: 3, diff: 2 }
                 ], 
                 success: [
                     "「……もっと、続けてもいいぞ」",
@@ -708,24 +669,9 @@
                     "（明日の最終日に繋がるような、私の気持ちを）"
                 ], 
                 choices: [
-                    { 
-                        text: "「て」", 
-                        req: 1, 
-                        reward: 1, 
-                        diff: 0 
-                    },
-                    { 
-                        text: "「あしたも」", 
-                        req: 11, 
-                        reward: 2, 
-                        diff: 1 
-                    },
-                    { 
-                        text: "「ずっといっしょ」", 
-                        req: 13, 
-                        reward: 3, 
-                        diff: 2 
-                    }
+                    { text: "「て」", req: 1, reward: 1, diff: 0 },
+                    { text: "「あしたも」", req: 11, reward: 2, diff: 1 },
+                    { text: "「ずっといっしょ」", req: 13, reward: 3, diff: 2 }
                 ], 
                 success: [
                     "「……ん。なんか、すごく落ち着く」",
@@ -753,24 +699,9 @@
                     "（これが、最後のメッセージ）"
                 ], 
                 choices: [
-                    { 
-                        text: "「る」", 
-                        req: 1, 
-                        reward: 2, 
-                        diff: 0 
-                    },
-                    { 
-                        text: "「だいすき」", 
-                        req: 15, 
-                        reward: 4, 
-                        diff: 1 
-                    },
-                    { 
-                        text: "「あいしてる」", 
-                        req: 8, 
-                        reward: 6, 
-                        diff: 2 
-                    }
+                    { text: "「る」", req: 1, reward: 2, diff: 0 },
+                    { text: "「だいすき」", req: 15, reward: 4, diff: 1 },
+                    { text: "「あいしてる」", req: 8, reward: 6, diff: 2 }
                 ] 
             }
         ];
@@ -810,112 +741,61 @@
 
         function generateEndingText(earnedEndingId) {
             let resultText = [];
-            
             resultText.push("書き終え、そっと指を離す。");
             resultText.push("指先に残る微かな熱の余韻を感じながら、私は息を呑んだ。");
-            resultText.push("彼は自分の手のひらをじっと見つめ……");
-            resultText.push("やがて、私の手をぎゅっと、痛いくらいの力で握り返した。");
-            resultText.push("沈黙が落ちる。");
-            resultText.push("暖炉の薪が、パチッと心地よい音を立てて爆ぜた。");
+            resultText.push("彼は自分の手のひらをじっと見つめ……やがて、私の手をぎゅっと、痛いくらいの力で握り返した。");
+            resultText.push("沈黙が落ちる。暖炉の薪が、パチッと心地よい音を立てて爆ぜた。");
 
             if (earnedEndingId === 1) {
                 resultText.push("【ED 1: ほのぼの不器用エンド】");
                 resultText.push("「……お前、本当に不器用だよな。短い言葉ばっか選んで、自信なさげにさ」");
                 resultText.push("彼は苦笑いしながら、空いた方の手で私の頭をポンポンと軽く叩いた。");
-                resultText.push("もっと気の利いたことを書きたかったのに、慎重になりすぎていた私を、");
-                resultText.push("彼は最初からすべて見透かしていたみたいだ。");
-                resultText.push("「でも、その迷ってる感じが、お前らしくて嫌いじゃないよ」");
                 resultText.push("繋いだ手から伝わってくる彼の体温が、何よりも確かな答えのような気がした。");
-                resultText.push("不器用な二人だけの、ゆっくりとした時間がこれからも続いていく。");
-
             } else if (earnedEndingId === 2) {
                 resultText.push("【ED 2: 優しい両思いエンド】");
                 resultText.push("「……何日かかけて、ようやくわかったよ。不器用なりに、色々伝えてくれてたんだな」");
                 resultText.push("彼は目を細め、どこか愛おしそうに私の手を見つめている。");
-                resultText.push("中くらいの、なんでもない言葉を並べていたつもりだったけれど。");
-                resultText.push("その裏にある私の本音は、ちゃんと彼に届いていたみたいだ。");
                 resultText.push("「失敗して赤くなってんの見てたらさ、俺まで恥ずかしくなってきただろ」");
-                resultText.push("彼の耳が赤くなっているのを見て、私も思わず頬が熱くなった。");
-                resultText.push("少しの失敗も笑い合える、そんな優しい恋の始まり。");
-
             } else if (earnedEndingId === 3) {
                 resultText.push("【ED 3: ぴったりシンクロエンド】");
                 resultText.push("「お前の温もりが、まっすぐ心に入ってくるみたいだった」");
                 resultText.push("彼は私の指を一本ずつ絡めるようにして、深く恋人繋ぎへと形を変えた。");
-                resultText.push("「毎日、お前が次は何て書いてくれるのか、実はすぐにわかってたんだ」");
-                resultText.push("「え……じゃあ、気づかないふりしてたの？」");
-                resultText.push("驚く私に、彼は少しだけ意地悪く微笑んだ。");
                 resultText.push("「心地よくてさ。ずっとこうして、お前に触れられていたかったんだよ」");
-                resultText.push("甘い声と共に囁かれ、私はもう頷くことしかできなかった。");
-                resultText.push("言葉以上に通じ合う、私たちの心はぴったりと重なっている。");
-
             } else if (earnedEndingId === 4) {
                 resultText.push("【ED 4: 情熱的な甘やかしエンド】");
                 resultText.push("「……わざと焦らしてただろ。難しいことばっか書こうとして、失敗してさ」");
                 resultText.push("彼はふうっと熱っぽい溜息をつくと、私の手をぐいっと引き寄せた。");
-                resultText.push("バランスを崩した私は、そのまま彼の大きな胸の中にすっぽりと収まってしまう。");
-                resultText.push("「積極的なのはいいけど、お前が必死すぎて、俺ばっかり我慢させられて……」");
-                resultText.push("「……ちょっと悔しい」");
-                resultText.push("耳元で低く響く彼の声に、全身が溶けてしまいそうだった。");
-                resultText.push("これからは、私が彼に甘やかされる番になりそうだ。");
-
+                resultText.push("「積極的なのはいいけど、お前が必死すぎて、俺ばっかり我慢させられて……ちょっと悔しい」");
             } else if (earnedEndingId === 5) {
                 resultText.push("【ED 5: 溺愛の極みエンド】");
                 resultText.push("「お前が愛おしすぎて、どうにかなりそう。……長い文字、いっしょうけんめい書いてさ」");
                 resultText.push("彼は熱を帯びた瞳で私を見つめると、息が止まるほどの強さで抱きすくめた。");
-                resultText.push("伝えたいことが溢れて長い言葉ばかり選んでいた私の熱意は、確実に彼に届いていた。");
-                resultText.push("「これだけ真っ直ぐぶつけられたら、もう逃げられないだろ」");
-                resultText.push("「……一生、離さないからな」");
-                resultText.push("誓いのようなその言葉に、私はただ涙を滲ませながら強く抱き返した。");
-                resultText.push("彼からの重いくらいの愛情に包まれて、私は世界で一番幸せ者だ。");
-
+                resultText.push("「これだけ真っ直ぐぶつけられたら、もう逃げられないだろ。……一生、離さないからな」");
             } else if (earnedEndingId === 6) {
                 resultText.push("【ED 6: 特別ルート「あいしてる」】");
                 resultText.push("「あ、い、し、て、る……だろ？ まったく、1文字ずつ遠回りしやがって……」");
                 resultText.push("彼は呆れたように笑いながらも、その瞳はひどく優しかった。");
-                resultText.push("迷わずに短い文字だけを繋いできた私の「秘密のメッセージ」。");
-                resultText.push("彼は最初からその意図に気づき、私が文字を紡ぎ終えるのを待っていてくれたのだ。");
-                resultText.push("「……俺も、愛してる。明日からは、てのひらじゃなくて」");
-                resultText.push("「毎日ちゃんと言葉で言ってやるよ」");
-                resultText.push("そのストレートな告白に、私の心は温かい幸福感で満たされていった。");
-
+                resultText.push("「……俺も、愛してる。明日からは、毎日ちゃんと言葉で言ってやるよ」");
             } else if (earnedEndingId === 7) {
                 resultText.push("【ED 7: 特別ルート「中難易度コンプ」】");
                 resultText.push("「毎日、丁度いい言葉ばかり並べやがって。……俺も、同じ気持ちだよ」");
                 resultText.push("彼は私の頬にそっと手を伸ばし、親指で優しく撫でた。");
                 resultText.push("「踏み込みすぎず、でも離れすぎず……お前らしい、完璧な距離の詰め方だったよ」");
-                resultText.push("毎日確実に言葉を届けてきた安定感が、二人の絆を確かなものに変えていた。");
-                resultText.push("「これからは、俺がその距離をもっと縮めていくから覚悟しとけよ」");
-                resultText.push("少し強引な彼の言葉に、私は嬉しさを隠しきれずに笑い合った。");
-
             } else if (earnedEndingId === 8) {
                 resultText.push("【ED 8: 特別ルート「高難易度コンプ」】");
                 resultText.push("「こんなに長い文字、よく毎日完璧に書けたな。……大好きだ、バカ」");
                 resultText.push("彼は感心したような、それでいて少し誇らしげな表情で私を見た。");
                 resultText.push("「毎日限界ギリギリまで俺を翻弄してさ。……お前以外に、こんなことできる奴いないよ」");
-                resultText.push("最高難易度の想いをすべて受け止めた彼は、もう私なしの生活には戻れそうにない。");
-                resultText.push("「お前がくれた愛情の分、これからは俺が倍にして返してやるから」");
-                resultText.push("そう言って私にキスを落とした彼は、もうすっかり私の虜のようだ。");
-
             } else if (earnedEndingId === 9) {
                 resultText.push("【ED 9: 全失敗の優しいぬくもりエンド】");
                 resultText.push("結局、5日間一度もまともに文字を書けなかった私を見て、彼は吹き出した。");
-                resultText.push("「くすぐったいのは本当だけどさ。お前が毎回焦って失敗するの、面白くて……ごめん」");
-                resultText.push("意地悪そうに笑う彼をぽかぽかと叩くと、そのまま腕を引かれ、温かい胸の中に閉じ込められた。");
                 resultText.push("「言葉なんてなくても、お前がいっしょうけんめい触れてくれただけで、十分伝わってるよ」");
-                resultText.push("失敗ばかりだったけれど、指先から伝わる愛情はちゃんと彼を温めていたのだ。");
-                resultText.push("不器用なままの私を丸ごと包み込んでくれる彼に、私はそっと身を預けた。");
-
             } else if (earnedEndingId === 10) {
                 resultText.push("【ED 10: Ending X】");
                 resultText.push("「すべての記憶を辿って、また俺の手を握ってくれたんだな。……ありがとう」");
-                resultText.push("これまでの数々の結末、すれ違った日々、そして結ばれた瞬間。");
-                resultText.push("すべてを知った上で、私はもう一度彼の隣に座り、この手をとった。");
-                resultText.push("「どんな結末になっても、俺の隣にはいつもお前がいてくれた」");
-                resultText.push("「……もう、言葉なんてなくても伝わってるから」");
-                resultText.push("永遠の誓いのような口付けが、すべての物語の終着点を優しく告げていた。");
-                resultText.push("私たちの秘密の遊びは、ここで本当の終わりを迎える。");
+                resultText.push("「どんな結末になっても、俺の隣にはいつもお前がいてくれた。……もう、言葉なんてなくても伝わってるから」");
             }
+            resultText.push("（エンディングここまで）");
             return resultText;
         }
 
@@ -956,35 +836,27 @@
             else { playerKeys++; saveKeys(); }
 
             let resultText = generateEndingText(earnedEndingId);
-            
             if (!isNew) {
                 resultText.push("★同じエンディングに到達したため、「てのひらの鍵」を1つ入手しました！");
                 resultText.push("【てのひらの鍵の使い方】\nスタート画面に戻り、未解放（🔒）のバッジをタップすると、鍵を1つ消費してエンディングを解放・閲覧することができます。\n（※エンディング★だけは鍵で解放できません）");
             }
-            
             resultText.push("〜 CLEAR！ プレイありがとうございました 〜");
-            
             const lockedEndings = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(x => !unlockedEndings.includes(x));
-            if (lockedEndings.length === 0) {
-                resultText.push("全エンディングコンプリート！おめでとうございます！");
-            } else {
+            if (lockedEndings.length === 0) resultText.push("全エンディングコンプリート！おめでとうございます！");
+            else {
                 let hintId = (lockedEndings.length === 1 && lockedEndings[0] === 10) ? 10 : lockedEndings.filter(x => x !== 10)[Math.floor(Math.random() * lockedEndings.filter(x => x !== 10).length)];
                 resultText.push(endingHints[hintId]);
             }
-            
             resultText.push("〜 タイトルに戻ります 〜");
-            
             playText(resultText, () => {
                 nextMark.style.display = 'none'; 
                 msgBox.onclick = () => { msgBox.onclick = advanceText; showTitle(); };
             });
         }
         
-        // 読み込み完了時にタイトル画面を正しく初期化
         window.addEventListener('DOMContentLoaded', showTitle);
     </script>
     <script>
-        // システムロジックの続き
         let typingStrokes = [];
         window.addEventListener('keydown', () => {
             const now = performance.now(); typingStrokes.push(now);
@@ -999,7 +871,7 @@
                 let dt = timestamp - lastTime; lastTime = timestamp;
                 timeRemaining -= dt;
                 timeCounter.innerText = `残り時間: ${Math.max(0, timeRemaining / 1000).toFixed(1)}秒`;
-                
+                tickleGauge = Math.max(0, tickleGauge - 0.3);
                 gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
                 blushOverlay.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
                 if (!warningShown) {

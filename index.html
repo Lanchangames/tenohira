@@ -456,8 +456,7 @@
         let choiceHistory = [];
         let timeRemaining = 0;
         let tickleGauge = 0;
-        let warningShown = false;
-        let warningTimeoutId = null;
+        let warningEndTime = 0;
         let lastTime = 0;
         let isGameLoopRunning = false;
         let rafId = null;
@@ -594,8 +593,9 @@
             phase = 'draw';
             tickleGauge = 0;
             currentStrokes = 0; 
-            timeRemaining = choice.req * 2000;
-            warningShown = false;
+            // 修正: 時間計算を線形から緩和
+            timeRemaining = (choice.req * 1500) + 2000;
+            warningEndTime = 0;
             currentChoice = choice;
             lastTime = performance.now();
             
@@ -654,9 +654,11 @@
 
         function stopDrawing(e) {
             if (!isDrawing || phase !== 'draw') return;
+            e.preventDefault(); // 修正: 誤動作防止
             isDrawing = false;
             
-            if (pathDist > 20) {
+            // 修正: しきい値を 35 に引き上げ判定を厳密に
+            if (pathDist > 35) {
                 currentStrokes++;
                 if (strokeCounter && currentChoice) {
                     const remain = Math.max(0, currentChoice.req - currentStrokes);
@@ -675,8 +677,8 @@
             canvas.addEventListener('mouseleave', stopDrawing);
             canvas.addEventListener('touchstart', startDrawing, {passive: false});
             canvas.addEventListener('touchmove', draw, {passive: false});
-            canvas.addEventListener('touchend', stopDrawing);
-            canvas.addEventListener('touchcancel', stopDrawing);
+            canvas.addEventListener('touchend', stopDrawing, {passive: false});
+            canvas.addEventListener('touchcancel', stopDrawing, {passive: false});
         }
 
         function completeDrawPhase() {
@@ -696,7 +698,14 @@
             if (blushOverlay) blushOverlay.style.opacity = '0';
             
             if (currentChoice) {
-                choiceHistory.push({ diff: currentChoice.diff, success: success });
+                // 修正: 履歴詳細化
+                choiceHistory.push({ 
+                    diff: currentChoice.diff, 
+                    success: success,
+                    req: currentChoice.req,
+                    actual: currentStrokes,
+                    timestamp: Date.now()
+                });
                 if (success) playerAffection += currentChoice.reward;
             }
             
@@ -710,14 +719,18 @@
         }
 
         function showDynamicWarning(text, duration) {
-            if (warningTimeoutId) clearTimeout(warningTimeoutId);
-            warningShown = true;
+            // 修正: ブロック方式から時間制御方式へ変更
+            if (Date.now() < warningEndTime) return;
+            
             if (warningText) {
                 warningText.innerText = text;
                 warningText.style.opacity = '1';
-                warningTimeoutId = setTimeout(() => {
-                    warningText.style.opacity = '0';
-                    warningShown = false;
+                warningEndTime = Date.now() + duration;
+                
+                setTimeout(() => {
+                    if (Date.now() >= warningEndTime) {
+                        warningText.style.opacity = '0';
+                    }
                 }, duration);
             }
         }
@@ -858,7 +871,7 @@
         const dailyData = [
             { day: 1, label: "１日目", intro: ["夕食後の穏やかな時間。パチパチと暖炉の火が爆ぜる音が部屋に響いている。", "「……ほら、手。貸して」", "（……この手に、文字を書いてみたら、少しは伝わるかな？）", "（手始めに、なんて書いてみよう？）"], choices: [{ text: "「あ」", req: 3, reward: 1, diff: 0 }, { text: "「ねえ」", req: 6, reward: 2, diff: 1 }, { text: "「おつかれ」", req: 9, reward: 3, diff: 2 }], success: ["「……ん。なんか、悪くないな」", "（指先から伝わる彼の体温が、私の手にもじんわりと移ってくる）"], fail: ["「っ、ちょ！ くすぐったい！」", "（慌てて手を引っ込められてしまった……また明日、試してみよう）"] },
             { day: 2, label: "２日目", intro: ["翌日の夜。", "「……あんま、くすぐったくすんなよ」", "そう言いながらも、彼は自然に手を差し出してくれた。", "（今日はもう少しだけ、踏み込んだことを書いてみようかな）"], choices: [{ text: "「い」", req: 2, reward: 1, diff: 0 }, { text: "「いつも」", req: 6, reward: 2, diff: 1 }, { text: "「きもちいい」", req: 14, reward: 3, diff: 2 }], success: ["「……お前、手あったかいな」", "（ぽつりと呟いた彼の耳が、少し赤くなっている気がした）"], fail: ["「あーっ！ もう限界！」", "（手のひらは敏感なんだ、と彼はムスッとしている。次こそは……）"] },
-            { day: 3, label: "３日目", intro: ["３日目の夜。今日は彼の方から無言で手が差し出された。", "（今日は、少し長めに書いてみようかな……？）"], choices: [{ text: "「し」", req: 1, reward: 1, diff: 0 }, { text: "「がんばれ」", req: 13, reward: 2, diff: 1 }, { text: "「ありがとう」", req: 14, reward: 3, diff: 2 }], success: ["「……もっと、続けてもいいぞ」", "（そっぽを向きながら言った彼の声に、胸の奥がぎゅっとする）"], fail: ["「……っ、ん、やっぱ無理！！」", "（変に力が入ってしまった。もどかしいけれど、このやり取りも悪くないかも）"] },
+            { day: 3, label: "３日目", intro: ["３日目の夜。今日は彼の方から無言で手が差し出された。", "（今日は, 少し長めに書いてみようかな……？）"], choices: [{ text: "「し」", req: 1, reward: 1, diff: 0 }, { text: "「がんばれ」", req: 13, reward: 2, diff: 1 }, { text: "「ありがとう」", req: 14, reward: 3, diff: 2 }], success: ["「……もっと、続けてもいいぞ」", "（そっぽを向きながら言った彼の声に、胸の奥がぎゅっとする）"], fail: ["「……っ、ん、やっぱ無理！！」", "（変に力が入ってしまった。もどかしいけれど、このやり取りも悪くないかも）"] },
             { day: 4, label: "４日目", intro: ["４日目。", "「……最近、お前のマッサージがないと落ち着かないかも」", "無自覚にそんなことを言う彼に、心臓が破裂しそうだ。", "（今日こそ、もっと踏み込んだ言葉を……）"], choices: [{ text: "「て」", req: 1, reward: 1, diff: 0 }, { text: "「あしたも」", req: 11, reward: 2, diff: 1 }, { text: "「ずっといっしょ」", req: 13, reward: 3, diff: 2 }], success: ["「……ん。なんか、すごく落ち着く」", "（確かな温もりが伝わってくる。いよいよ明日は、一番伝えたいことを……）"], fail: ["「あーもう、ごめん！ 限界！！」", "（あともう少しだったのに！ 彼の耳は真っ赤に染まっている）"] },
             { day: 5, label: "最終日", intro: ["そして、５日目の夜。", "「お前が何書きたいのか、ちゃんと知りたい。教えてくれ」", "彼の真剣な眼差し。もう誤魔化しはきかない。", "（彼の手のひらに、私の本当の想いを……なんて書こう？）"], choices: [{ text: "「る」", req: 1, reward: 2, diff: 0 }, { text: "「だいすき」", req: 15, reward: 4, diff: 1 }, { text: "「あいしてる」", req: 8, reward: 6, diff: 2 }] }
         ];
@@ -891,16 +904,16 @@
 
         function generateEndingText(earnedEndingId) {
             let resultText = ["書き終え、そっと指を離す。", "彼は自分の手のひらを見つめ……やがて、私の手をぎゅっと握り返した。", "沈黙が落ちる。薪がパチッと音を立てた。"];
-            if (earnedEndingId === 1) { resultText.push("【ED 1: ほのぼの不器用エンド】", "「……お前、本当に不器用だよな。短い言葉ばっか選んで、自信なさげにさ」", "彼は苦笑いしながら、私の頭をポンポンと軽く叩いた。", "慎重になりすぎていた私を、彼はすべて見透かしていたみたいだ。", "「でも、その迷ってる感じが、お前らしくて嫌いじゃないよ」", "繋いだ手から伝わってくる彼の体温が、何よりも確かな答えのような気がした。"); }
-            else if (earnedEndingId === 2) { resultText.push("【ED 2: 優しい両思いエンド】", "「……何日かかけて、ようやくわかったよ。不器用なりに、色々伝えてくれてたんだな」", "彼は目を細め、どこか愛おしそうに私の手を見つめている。", "中くらいの、なんでもない言葉を並べていたつもりだったけれど。", "「失敗して赤くなってんの見てたらさ、俺まで恥ずかしくなってきただろ」", "彼の耳が赤くなっているのを見て、私も思わず頬が熱くなった。"); }
-            else if (earnedEndingId === 3) { resultText.push("【ED 3: ぴったりシンクロエンド】", "「お前の温もりが、まっすぐ心に入ってくるみたいだった」", "彼は私の指を一本ずつ絡めるようにして、恋人繋ぎへと形を変えた。", "「毎日、お前が次は何て書いてくれるのか、実はすぐにわかってたんだ」", "「え……じゃあ、気づかないふりしてたの？」", "「心地よくてさ。ずっとこうして、お前に触れられていたかったんだよ」", "甘い声と共に囁かれ、私はもう頷くことしかできなかった。"); }
-            else if (earnedEndingId === 4) { resultText.push("【ED 4: 情熱的な甘やかしエンド】", "「……わざと焦らしてただろ。難しいことばっか書こうとして、失敗してさ」", "彼はふうっと溜息をつくと、私の手をぐいっと引き寄せた。", "バランスを崩した私は、そのまま彼の胸の中にすっぽりと収まってしまう。", "「積極的なのはいいけど、お前が必死すぎて、俺ばっかり我慢させられて……ちょっと悔しい」", "耳元で低く響く彼の声に、全身が溶けてしまいそうだった。"); }
-            else if (earnedEndingId === 5) { resultText.push("【ED 5: 溺愛の極みエンド】", "「お前が愛おしすぎて、どうにかなりそう。……長い文字、いっしょうけんめい書いてさ」", "彼は熱を帯びた瞳で私を見つめると、息が止まるほどの強さで抱きすくめた。", "伝えたいことが溢れて長い言葉ばかり選んでいた私の熱意は、確実に彼に届いていた。", "「これだけ真っ直ぐぶつけられたら、もう逃げられないだろ。……一生、離さないからな」", "誓いのようなその言葉に、私はただ涙を滲ませながら強く抱き返した。"); }
-            else if (earnedEndingId === 6) { resultText.push("【ED 6: 特別ルート「あいしてる」】", "「あ、い、し、て、る……だろ？ まったく、1文字ずつ遠回りしやがって……」", "彼は呆れたように笑いながらも、その瞳はひどく優しかった。", "迷わずに短い文字だけを繋いできた私の「秘密のメッセージ」に、彼は最初から気づいていた。", "「……俺も、愛してる。明日からは、毎日ちゃんと言言葉で言ってやるよ」"); }
-            else if (earnedEndingId === 7) { resultText.push("【ED 7: 特別ルート「中難易度コンプ」】", "「毎日、丁度いい言葉ばかり並べやがって。……俺も、同じ気持ちだよ」", "彼は私の頬にそっと手を伸ばし、優しく撫でた。", "「踏み込みすぎず、でも離れすぎず……お前らしい、完璧な距離の詰め方だったよ」", "毎日確実に言葉を届けてきた安定感が、二人の絆を確かなものに変えていた。"); }
-            else if (earnedEndingId === 8) { resultText.push("【ED 8: 特別ルート「高難易度コンプ」】", "「こんなに長い文字、よく毎日完璧に書けたな。……大好きだ、バカ」", "彼は感心したような、それでいて少し誇らしげな表情で私を見た。", "「毎日限界ギリギリまで俺を翻弄してさ。……お前以外に、こんなことできる奴いないよ」", "最高難易度の想いを受け止めた彼は、もう私なしの生活には戻れそうにない。"); }
-            else if (earnedEndingId === 9) { resultText.push("【ED 9: 全失敗の優しいぬくもりエンド】", "結局、5日間一度もまともに文字を書けなかった私を見て、彼は吹き出した。", "「くすぐったいのは本当だけどさ。お前が毎回焦って失敗するの、面白くて……ごめん」", "意地悪そうに笑う彼を叩くと、そのまま腕を引かれ、温かい胸の中に閉じ込められた。", "「言葉なんてなくても、お前がいっしょうけんめい触れてくれただけで、十分伝わってるよ」"); }
-            else if (earnedEndingId === 10) { resultText.push("【ED 10: Ending X】", "「すべての記憶を辿って、また俺の手を握ってくれたんだな。……ありがとう」", "これまでの数々の結末、すれ違った日々、そして結ばれた瞬間。", "すべてを知った上で、私はもう一度彼の隣に座り、この手をとった。", "「どんな結末になっても、俺の隣にはいつもお前がいてくれた。……もう、言葉なんてなくても伝わってるから」"); }
+            if (earnedEndingId === 1) { resultText.push("【ED 1: ほのぼの不器用エンド】", "「……お前, 本当に不器用だよな。短い言葉ばっか選んで, 自信なさげにさ」", "彼は苦笑いしながら, 私の頭をポンポンと軽く叩いた。", "慎重になりすぎていた私を, 彼はすべて見透かしていたみたいだ。", "「でも, その迷ってる感じが, お前らしくて嫌いじゃないよ」", "繋いだ手から伝わってくる彼の体温が, 何よりも確かな答えのような気がした。"); }
+            else if (earnedEndingId === 2) { resultText.push("【ED 2: 優しい両思いエンド】", "「……何日かかけて, ようやくわかったよ。不器用なりに, 色々伝えてくれてたんだな」", "彼は目を細め, どこか愛おしそうに私の手を見つめている。", "中くらいの, なんでもない言葉を並べていたつもりだったけれど。", "「失敗して赤くなってんの見てたらさ, 俺まで恥ずかしくなってきただろ」", "彼の耳が赤くなっているのを見て, 私も思わず頬が熱くなった。"); }
+            else if (earnedEndingId === 3) { resultText.push("【ED 3: ぴったりシンクロエンド】", "「お前の温もりが, まっすぐ心に入ってくるみたいだった」", "彼は私の指を一本ずつ絡めるようにして, 恋人繋ぎへと形を変えた。", "「毎日, お前が次は何て書いてくれるのか, 実はすぐにわかってたんだ」", "「え……じゃあ, 気づかないふりしてたの？」", "「心地よくてさ。ずっとこうして, お前に触れられていたかったんだよ」", "甘い声と共に囁かれ, 私はもう頷くことしかできなかった。"); }
+            else if (earnedEndingId === 4) { resultText.push("【ED 4: 情熱的な甘やかしエンド】", "「……わざと焦らしてただろ。難しいことばっか書こうとして, 失敗してさ」", "彼はふうっと溜息をつくと, 私の手をぐいっと引き寄せた。", "バランスを崩した私は, そのまま彼の胸の中にすっぽりと収まってしまう。", "「積極的なのはいいけど, お前が必死すぎて, 俺ばっかり我慢させられて……ちょっと悔しい」", "耳元で低く響く彼の声に, 全身が溶けてしまいそうだった。"); }
+            else if (earnedEndingId === 5) { resultText.push("【ED 5: 溺愛の極みエンド】", "「お前が愛おしすぎて, どうにかなりそう。……長い文字, いっしょうけんめい書いてさ」", "彼は熱を帯びた瞳で私を見つめると, 息が止まるほどの強さで抱きすくめた。", "伝えたいことが溢れて長い言葉ばかり選んでいた私の熱意は, 確実に彼に届いていた。", "「これだけ真っ直ぐぶつけられたら, もう逃げられないだろ。……一生, 離さないからな」", "誓いのようなその言葉に, 私はただ涙を滲ませながら強く抱き返した。"); }
+            else if (earnedEndingId === 6) { resultText.push("【ED 6: 特別ルート「あいしてる」】", "「あ, い, し, て, る……だろ？ まったく, 1文字ずつ遠回りしやがって……」", "彼は呆れたように笑いながらも, その瞳はひどく優しかった。", "迷わずに短い文字だけを繋いできた私の「秘密のメッセージ」に, 彼は最初から気づいていた。", "「……俺も, 愛してる。明日からは, 毎日ちゃんと言言葉で言ってやるよ」"); }
+            else if (earnedEndingId === 7) { resultText.push("【ED 7: 特別ルート「中難易度コンプ」】", "「毎日, 丁度いい言葉ばかり並べやがって。……俺も, 同じ気持ちだよ」", "彼は私の頬にそっと手を伸ばし, 優しく撫でた。", "「踏み込みすぎず, でも離れすぎず……お前らしい, 完璧な距離の詰め方だったよ」", "毎日確実に言葉を届けてきた安定感が, 二人の絆を確かなものに変えていた。"); }
+            else if (earnedEndingId === 8) { resultText.push("【ED 8: 特別ルート「高難易度コンプ」】", "「こんなに長い文字, よく毎日完璧に書けたな。……大好きだ, バカ」", "彼は感心したような, それでいて少し誇らしげな表情で私を見た。", "「毎日限界ギリギリまで俺を翻弄してさ。……お前以外に, こんなことできる奴いないよ」", "最高難易度の想いを受け止めた彼は, もう私なしの生活には戻れそうにない。"); }
+            else if (earnedEndingId === 9) { resultText.push("【ED 9: 全失敗の優しいぬくもりエンド】", "結局, 5日間一度もまともに文字を書けなかった私を見て, 彼は吹き出した。", "「くすぐったいのは本当だけどさ。お前が毎回焦って失敗するの, 面白くて……ごめん」", "意地悪そうに笑う彼を叩くと, そのまま腕を引かれ, 温かい胸の中に閉じ込められた。", "「言葉なんてなくても, お前がいっしょうけんめい触れてくれただけで, 十分伝わってるよ」"); }
+            else if (earnedEndingId === 10) { resultText.push("【ED 10: Ending X】", "「すべての記憶を辿って, また俺の手を握ってくれたんだな。……ありがとう」", "これまでの数々の結末, すれ違った日々, そして結ばれた瞬間。", "すべてを知った上で, 私はもう一度彼の隣に座り, この手をとった。", "「どんな結末になっても, 俺の隣にはいつもお前がいてくれた。……もう, 言葉なんてなくても伝わってるから」"); }
             return resultText;
         }
 
@@ -925,7 +938,7 @@
             let isNew = !unlockedEndings.includes(earnedEndingId);
             if (isNew) saveEnding(earnedEndingId); else { playerKeys++; saveKeys(); }
             let resultText = generateEndingText(earnedEndingId);
-            if (!isNew) { resultText.push("★同じエンディングに到達したため、「てのひらの鍵」を1つ入手しました！", "【てのひらの鍵の使い方】\nスタート画面に戻り、未解放（🔒）のバッジをタップすると、鍵を1つ消費してエンディングを解放・閲覧することができます。"); }
+            if (!isNew) { resultText.push("★同じエンディングに到達したため、「てのひらの鍵」を1つ入手しました！", "【てのひらの鍵の使い方】\nスタート画面に戻り, 未解放（🔒）のバッジをタップすると, 鍵を1つ消費してエンディングを解放・閲覧することができます。"); }
             resultText.push("〜 CLEAR！ プレイありがとうございました 〜");
             const lockedEndings = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(x => !unlockedEndings.includes(x));
             if (lockedEndings.length === 0) resultText.push("全エンディングコンプリート！おめでとうございます！");
@@ -954,12 +967,14 @@
                 if(gaugeBar) gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
                 blushOverlay.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
                 
-                if (!warningShown) {
-                    if (timeRemaining <= 4000) showDynamicWarning("「……時間、まだ？」", 2000);
-                    else if (tickleGauge >= 90) showDynamicWarning("「待って、そこ…っ」", 1500);
+                // 修正: 時間制御方式で警告表示
+                if (Date.now() >= warningEndTime) {
+                    if (timeRemaining <= 4000) showDynamicWarning("「……時間, まだ？」", 2000);
+                    else if (tickleGauge >= 90) showDynamicWarning("「待って, そこ…っ」", 1500);
                     else if (tickleGauge >= 60) showDynamicWarning("「ちょっと…」", 1500);
-                    else if (tickleGauge >= 30 && Math.random() < 0.02) showDynamicWarning("「ふふ、くすぐったい」", 1500);
+                    else if (tickleGauge >= 30 && Math.random() < 0.02) showDynamicWarning("「ふふ, くすぐったい」", 1500);
                 }
+                
                 if (timeRemaining <= 0 || tickleGauge >= 100) endDrawPhase(false);
                 
                 if(ctx && canvas) {

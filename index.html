@@ -670,6 +670,9 @@
                 if (success) playerAffection += currentChoice.reward;
             }
             
+            // 描画終了時、Tickle音を消す
+            if (audioTickleGain) audioTickleGain.gain.value = 0;
+            
             const day = dailyData[currentDayIdx];
             const texts = success ? day.success : day.fail;
             
@@ -809,7 +812,6 @@
                 const bufferSize = ctx.sampleRate * 2;
                 const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
                 const output = buffer.getChannelData(0);
-                // 振幅係数を0.03 -> 0.15 に引き上げ
                 for (let i = 0; i < bufferSize; i++) output[i] = (Math.random() * 2 - 1) * 0.15;
                 
                 audioNoiseNode = ctx.createBufferSource(); 
@@ -817,16 +819,16 @@
                 audioNoiseNode.loop = true;
                 audioNoiseFilter = ctx.createBiquadFilter(); 
                 audioNoiseFilter.type = 'lowpass'; 
-                audioNoiseFilter.frequency.value = 150;
+                // 低音ノイズを軽減するため周波数を上げる
+                audioNoiseFilter.frequency.value = 400;
                 audioNoiseGain = ctx.createGain(); 
-                // ゲインを0.5 -> 0.9 に引き上げ
-                audioNoiseGain.gain.value = 0.9;
+                // ノイズが主張しすぎないようゲインを下げる
+                audioNoiseGain.gain.value = 0.05;
                 audioNoiseNode.connect(audioNoiseFilter).connect(audioNoiseGain).connect(ctx.destination);
                 audioNoiseNode.start();
                 
                 const tBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
                 const tOutput = tBuffer.getChannelData(0);
-                // 振幅係数を0.3 -> 0.6 に引き上げ
                 for (let i = 0; i < bufferSize; i++) tOutput[i] = (Math.random() * 2 - 1) * 0.6;
                 audioTickleNode = ctx.createBufferSource(); 
                 audioTickleNode.buffer = tBuffer; 
@@ -913,6 +915,12 @@
                 if(timeCounter) timeCounter.innerText = `残り時間: ${Math.max(0, timeRemaining / 1000).toFixed(1)}秒`;
                 
                 tickleGauge = Math.max(0, tickleGauge - (0.01 * dt));
+                
+                // ゲージに応じてTickle音量を変化させる
+                if (audioTickleGain) {
+                    audioTickleGain.gain.value = Math.min(1.0, tickleGauge / 100);
+                }
+
                 if(gaugeBar) gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
                 if(blushOverlay) blushOverlay.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
                 
@@ -949,7 +957,7 @@
             { day: 2, label: "２日目", intro: ["翌日の夜。", "「……あんま、くすぐったくすんなよ」", "そう言いながらも, 彼は自然に手を差し出してくれた。", "（今日はもう少しだけ、踏み込んだことを書いてみようかな）"], choices: [{ text: "「い」", req: 2, reward: 1, diff: 0 }, { text: "「いつも」", req: 6, reward: 2, diff: 1 }, { text: "「きもちいい」", req: 14, reward: 3, diff: 2 }], success: ["「……お前、手あったかいな」", "（ぽつりと呟いた彼の耳が、少し赤くなっている気がした）"], fail: ["「あーっ！ もう限界！」", "（手のひらは敏感なんだ、と彼はムスッとしている。次こそは……）"] },
             { day: 3, label: "３日目", intro: ["３日目の夜。今日は彼の方から無言で手が差し出された。", "（今日は, 少し長めに書いてみようかな……？）"], choices: [{ text: "「し」", req: 1, reward: 1, diff: 0 }, { text: "「がんばれ」", req: 13, reward: 2, diff: 1 }, { text: "「ありがとう」", req: 14, reward: 3, diff: 2 }], success: ["「……もっと、続けてもいいぞ」", "（そっぽを向きながら言った彼の声に、胸の奥がぎゅっとする）"], fail: ["「……っ、ん、やっぱ無理！！」", "（変に力が入ってしまった。もどかしいけれど、このやり取りも悪くないかも）"] },
             { day: 4, label: "４日目", intro: ["４日目。", "「……最近、お前のマッサージがないと落ち着かないかも」", "無自覚にそんなことを言う彼に、心臓が破裂しそうだ。", "（今日こそ、もっと踏み込んだ言葉を……）"], choices: [{ text: "「て」", req: 1, reward: 1, diff: 0 }, { text: "「あしたも」", req: 11, reward: 2, diff: 1 }, { text: "「ずっといっしょ」", req: 13, reward: 3, diff: 2 }], success: ["「……ん。なんか、すごく落ち着く」", "（確かな温もりが伝わってくる。いよいよ明日は、一番伝えたいことを……）"], fail: ["「あーもう、ごめん！ 限界！！」", "（あともう少しだったのに！ 彼の耳は真っ赤に染まっている）"] },
-            { day: 5, label: "最終日", intro: ["そして、５日目の夜。", "「お前が何書きたいのか、ちゃんと知りたい。教えてくれ」", "彼の真剣な眼差し。もう誤魔化しはきかない。", "（彼の手のひらに、私の本当の想いを……なんて書こう？）"], choices: [{ text: "「る」", req: 1, reward: 2, diff: 0 }, { text: "「だいすき」", req: 15, reward: 4, diff: 1 }, { text: "「あいしてる」", req: 8, reward: 6, diff: 2 }], success: ["「……全部、伝わったよ」", "（彼は優しく私の手を取った）"], fail: ["「……っ、ん、やっぱ無理！！」", "（最後も失敗してしまった……）"] }
+            { day: 5, label: "最終日", intro: ["そして、５日目の夜。", "「お前が何書きたいのか, ちゃんと知りたい。教えてくれ」", "彼の真剣な眼差し。もう誤魔化しはきかない。", "（彼の手のひらに, 私の本当の想いを……なんて書こう？）"], choices: [{ text: "「る」", req: 1, reward: 2, diff: 0 }, { text: "「だいすき」", req: 15, reward: 4, diff: 1 }, { text: "「あいしてる」", req: 8, reward: 6, diff: 2 }], success: ["「……全部, 伝わったよ」", "（彼は優しく私の手を取った）"], fail: ["「……っ, ん, やっぱ無理！！」", "（最後も失敗してしまった……）"] }
         ];
 
         const endingTitles = {

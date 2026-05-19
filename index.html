@@ -398,11 +398,18 @@
         let rafId = null;
         let currentChoice = null;
         
+        // 修正: タイマーID管理用
+        let dayTransitionTimeout1 = null;
+        let dayTransitionTimeout2 = null;
+        let warningTimeout = null;
+        
         let audioCtx = null;
         let isAudioGraphBuilt = false;
         let audioTickleNode = null;
         let audioTickleFilter = null;
         let audioTickleGain = null;
+        // 修正: 再生用バッファを保存しておく変数
+        let audioTickleBuffer = null; 
         
         let isDrawing = false;
         let currentStrokes = 0;
@@ -410,7 +417,18 @@
         let lastY = 0;
         let pathDist = 0;
 
+        // 修正: 画面遷移時等のタイマー破棄関数
+        function clearAllTimeouts() {
+            if (dayTransitionTimeout1) clearTimeout(dayTransitionTimeout1);
+            if (dayTransitionTimeout2) clearTimeout(dayTransitionTimeout2);
+            if (warningTimeout) clearTimeout(warningTimeout);
+            dayTransitionTimeout1 = null;
+            dayTransitionTimeout2 = null;
+            warningTimeout = null;
+        }
+
         function resetGameState() {
+            clearAllTimeouts();
             playerAffection = 0;
             currentDayIdx = 0;
             choiceHistory = [];
@@ -510,6 +528,7 @@
         function startDay() {
             if (msgBox) msgBox.style.display = 'none'; 
             clearCanvas(); 
+            clearAllTimeouts();
             
             if (currentDayIdx >= dailyData.length) {
                 evaluateEnding();
@@ -520,9 +539,11 @@
             if (transition) {
                 transition.innerText = day.label;
                 transition.style.opacity = '1';
-                setTimeout(() => {
+                
+                // 修正: タイムアウトIDを保存して管理
+                dayTransitionTimeout1 = setTimeout(() => {
                     transition.style.opacity = '0';
-                    setTimeout(() => {
+                    dayTransitionTimeout2 = setTimeout(() => {
                         playText(day.intro, () => {
                             if (day.choices) showChoices(day.choices);
                             else evaluateEnding(); 
@@ -584,6 +605,18 @@
             lastX = clientX - rect.left;
             lastY = clientY - rect.top;
             pathDist = 0;
+            
+            // 修正: 描画ごとに AudioBufferSourceNode を新しく生成して再生
+            if (audioCtx && audioTickleBuffer) {
+                if (audioTickleNode) {
+                    try { audioTickleNode.stop(); audioTickleNode.disconnect(); } catch(e) {}
+                }
+                audioTickleNode = audioCtx.createBufferSource();
+                audioTickleNode.buffer = audioTickleBuffer;
+                audioTickleNode.loop = true;
+                audioTickleNode.connect(audioTickleFilter);
+                audioTickleNode.start();
+            }
         }
 
         function draw(e) {
@@ -617,8 +650,12 @@
             e.preventDefault();
             isDrawing = false;
             
-            // 修正: 指を離した瞬間に音量を0にする
             if (audioTickleGain) audioTickleGain.gain.value = 0;
+            // 修正: 指を離した際に AudioBufferSourceNode を停止し破棄する
+            if (audioTickleNode) {
+                try { audioTickleNode.stop(); audioTickleNode.disconnect(); } catch(e) {}
+                audioTickleNode = null;
+            }
 
             if (pathDist > 35) {
                 currentStrokes++;
@@ -671,6 +708,11 @@
             }
             
             if (audioTickleGain) audioTickleGain.gain.value = 0;
+            // 修正: 描画フェーズ終了時にも確実に破棄する
+            if (audioTickleNode) {
+                try { audioTickleNode.stop(); audioTickleNode.disconnect(); } catch(e) {}
+                audioTickleNode = null;
+            }
             
             const day = dailyData[currentDayIdx];
             const texts = success ? day.success : day.fail;
@@ -688,8 +730,11 @@
                 warningText.innerText = text;
                 warningText.style.opacity = '1';
                 warningEndTime = now + duration;
-                setTimeout(() => {
-                    if (performance.now() >= warningEndTime) warningText.style.opacity = '0';
+                
+                // 修正: タイマーを管理
+                if (warningTimeout) clearTimeout(warningTimeout);
+                warningTimeout = setTimeout(() => {
+                    if (performance.now() >= warningEndTime && warningText) warningText.style.opacity = '0';
                 }, duration);
             }
         }
@@ -735,6 +780,7 @@
         }
 
         function showTitle() {
+            clearAllTimeouts();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('title-screen').classList.add('active');
             renderBadges();
@@ -743,6 +789,7 @@
         }
 
         function showHowTo() {
+            clearAllTimeouts();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('how-to-screen').classList.add('active');
         }
@@ -758,7 +805,9 @@
                 const btn = document.createElement('button');
                 btn.className = 'menu-btn';
                 btn.style.height = '45px'; btn.style.fontSize = '16px';
-                btn.style.padding = '0 20px'; btn.style.width = '100px'; 
+                btn.style.padding = '0 20px'; 
+                // 修正: 幅を100px固定から、8文字が確実に入る幅（180px）に変更
+                btn.style.width = '180px'; 
                 btn.innerText = btnText;
                 btn.onclick = () => {
                     modal.classList.remove('active');
@@ -810,19 +859,19 @@
             if (!isAudioGraphBuilt) {
                 const bufferSize = ctx.sampleRate * 2;
                 
-                const tBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-                const tOutput = tBuffer.getChannelData(0);
+                // 修正: バッファの生成のみ行い、再生ノードは作らない設計に変更
+                audioTickleBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const tOutput = audioTickleBuffer.getChannelData(0);
                 for (let i = 0; i < bufferSize; i++) tOutput[i] = (Math.random() * 2 - 1) * 0.6;
-                audioTickleNode = ctx.createBufferSource(); 
-                audioTickleNode.buffer = tBuffer; 
-                audioTickleNode.loop = true;
+                
                 audioTickleFilter = ctx.createBiquadFilter(); 
                 audioTickleFilter.type = 'highpass'; 
                 audioTickleFilter.frequency.value = 3000;
+                
                 audioTickleGain = ctx.createGain(); 
                 audioTickleGain.gain.value = 0;
-                audioTickleNode.connect(audioTickleFilter).connect(audioTickleGain).connect(ctx.destination);
-                audioTickleNode.start();
+                
+                audioTickleFilter.connect(audioTickleGain).connect(ctx.destination);
                 
                 isAudioGraphBuilt = true;
             }
@@ -830,10 +879,16 @@
         }
 
         function stopAudio() {
+            // 修正: ノードの確実な停止
+            if (audioTickleNode) {
+                try { audioTickleNode.stop(); audioTickleNode.disconnect(); } catch(e) {}
+                audioTickleNode = null;
+            }
             if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
         }
 
         function replayEnding(id) {
+            clearAllTimeouts();
             stopLoop();
             resetGameState();
             initAudio();
@@ -899,7 +954,6 @@
                 
                 tickleGauge = Math.max(0, tickleGauge - (0.01 * dt));
                 
-                // 修正: 描画中のみ音量を出す
                 if (audioTickleGain) {
                     audioTickleGain.gain.value = isDrawing ? Math.min(0.05, tickleGauge / 200) : 0;
                 }

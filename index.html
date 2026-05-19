@@ -412,6 +412,14 @@
         let lastY = 0;
         let pathDist = 0;
 
+        // SNSシェア用関数
+        function shareResult(endingId) {
+            const text = `「ゆびさきで秘密を」で、エンディング「${endingId}」に到達しました！`;
+            const url = encodeURIComponent(window.location.href);
+            const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`;
+            window.open(tweetUrl, '_blank');
+        }
+
         function resetGameState() {
             playerAffection = 0;
             currentDayIdx = 0;
@@ -489,7 +497,8 @@
 
         function startGame() {
             resetGameState();
-            getAudioContext();
+            // ユーザー操作による初回AudioContext Resume
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
@@ -504,8 +513,9 @@
                 const dpr = window.devicePixelRatio || 1;
                 ctx.save();
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
-                ctx.fillStyle = '#FFF9F5';
-                ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+                // 背景色と一致させる
+                ctx.fillStyle = '#FFF3E0';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.restore();
             }
         }
@@ -740,10 +750,9 @@
         function showHowTo() {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('how-to-screen').classList.add('active');
-            getAudioContext();
         }
 
-        function showCustomModal(text, isConfirm, onConfirm) {
+        function showCustomModal(text, isConfirm, onConfirm, hasShare = false, endingId = null) {
             const modal = document.getElementById('custom-modal');
             const modalText = document.getElementById('modal-text');
             const modalBtns = document.getElementById('modal-buttons');
@@ -766,6 +775,9 @@
                 modalBtns.appendChild(createBtn('はい', onConfirm));
                 modalBtns.appendChild(createBtn('いいえ', null));
             } else {
+                if (hasShare) {
+                    modalBtns.appendChild(createBtn('Xでシェア', () => shareResult(endingId)));
+                }
                 modalBtns.appendChild(createBtn('OK', onConfirm));
             }
             modal.classList.add('active');
@@ -789,13 +801,14 @@
 
         function getAudioContext() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
             return audioCtx;
         }
 
         function initAudio() {
-            if (audioNoiseNode) return; 
             const ctx = getAudioContext();
+            if (ctx.state === 'suspended') ctx.resume();
+            if (audioNoiseNode) return; 
+            
             const bufferSize = ctx.sampleRate * 2;
             const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
             const output = buffer.getChannelData(0);
@@ -825,21 +838,15 @@
                 audioNoiseNode.disconnect();
                 audioNoiseNode = null;
             }
-            if (audioNoiseFilter) { audioNoiseFilter.disconnect(); audioNoiseFilter = null; }
-            if (audioNoiseGain) { audioNoiseGain.disconnect(); audioNoiseGain = null; }
-            
             if (audioTickleNode) {
                 try { audioTickleNode.stop(); } catch(e) {}
                 audioTickleNode.disconnect();
                 audioTickleNode = null;
             }
-            if (audioTickleFilter) { audioTickleFilter.disconnect(); audioTickleFilter = null; }
-            if (audioTickleGain) { audioTickleGain.disconnect(); audioTickleGain = null; }
         }
 
         function replayEnding(id) {
             resetGameState();
-            getAudioContext();
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
@@ -852,13 +859,10 @@
             clearCanvas();
             let resultText = generateEndingText(id);
             resultText.unshift(`エンディング${id}を再生します`);
-            resultText.push("〜 閲覧終了 〜"); resultText.push("〜 タイトルに戻ります 〜");
+            resultText.push("〜 閲覧終了 〜");
             playText(resultText, () => {
                 nextMark.style.display = 'none'; 
-                activeMsgHandler = () => {
-                    activeMsgHandler = handleMsgClick;
-                    showTitle();
-                };
+                showCustomModal(`エンディング${id}の閲覧が終了しました。\n結果をSNSにシェアしますか？`, false, () => showTitle(), true, id);
             });
         }
 
@@ -886,19 +890,10 @@
                 saveKeys(keys + 1); 
             }
             let resultText = generateEndingText(earnedEndingId);
-            if (!isNew) { resultText.push("★同じエンディングに到達したため、「てのひらの鍵」を1つ入手しました！", "【てのひらの鍵の使い方】\nスタート画面に戻り, 未解放（🔒）のバッジをタップすると, 鍵を1つ消費してエンディングを解放・閲覧することができます。"); }
             resultText.push("〜 CLEAR！ プレイありがとうございました 〜");
-            const currentUnlocked = getUnlockedEndings();
-            const lockedEndings = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(x => !currentUnlocked.includes(x));
-            if (lockedEndings.length === 0) resultText.push("全エンディングコンプリート！おめでとうございます！");
-            else { let hintId = (lockedEndings.length === 1 && lockedEndings[0] === 10) ? 10 : lockedEndings.filter(x => x !== 10)[Math.floor(Math.random() * lockedEndings.filter(x => x !== 10).length)]; resultText.push(endingHints[hintId]); }
-            resultText.push("〜 タイトルに戻ります 〜");
             playText(resultText, () => {
                 nextMark.style.display = 'none'; 
-                activeMsgHandler = () => {
-                    activeMsgHandler = handleMsgClick;
-                    showTitle();
-                };
+                showCustomModal(`クリア！エンディング${earnedEndingId}に到達しました。\n結果をSNSにシェアしますか？`, false, () => showTitle(), true, earnedEndingId);
             });
         }
 
@@ -935,6 +930,11 @@
             rafId = requestAnimationFrame(gameLoop);
         }
 
+        // 初回クリックでのAudioコンテキスト強制再開用イベント
+        document.addEventListener('click', () => {
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        }, { once: true });
+
         window.addEventListener('DOMContentLoaded', showTitle);
         
         // --- Endings Data ---
@@ -945,8 +945,6 @@
             { day: 4, label: "４日目", intro: ["４日目。", "「……最近、お前のマッサージがないと落ち着かないかも」", "無自覚にそんなことを言う彼に、心臓が破裂しそうだ。", "（今日こそ、もっと踏み込んだ言葉を……）"], choices: [{ text: "「て」", req: 1, reward: 1, diff: 0 }, { text: "「あしたも」", req: 11, reward: 2, diff: 1 }, { text: "「ずっといっしょ」", req: 13, reward: 3, diff: 2 }], success: ["「……ん。なんか、すごく落ち着く」", "（確かな温もりが伝わってくる。いよいよ明日は、一番伝えたいことを……）"], fail: ["「あーもう、ごめん！ 限界！！」", "（あともう少しだったのに！ 彼の耳は真っ赤に染まっている）"] },
             { day: 5, label: "最終日", intro: ["そして、５日目の夜。", "「お前が何書きたいのか、ちゃんと知りたい。教えてくれ」", "彼の真剣な眼差し。もう誤魔化しはきかない。", "（彼の手のひらに、私の本当の想いを……なんて書こう？）"], choices: [{ text: "「る」", req: 1, reward: 2, diff: 0 }, { text: "「だいすき」", req: 15, reward: 4, diff: 1 }, { text: "「あいしてる」", req: 8, reward: 6, diff: 2 }], success: ["「……全部、伝わったよ」", "（彼は優しく私の手を取った）"], fail: ["「……っ、ん、やっぱ無理！！」", "（最後も失敗してしまった……）"] }
         ];
-
-        const endingHints = { 1: "【ヒント】あまり欲張らず、短い言葉（低難易度）を中心に選んで接してみよう。", 2: "【ヒント】標準的な長さの言葉（中難易度）を選びつつ、時々失敗を混ぜてみよう。", 3: "【ヒント】標準的な長さの言葉（中難易度）を選びつつ、なるべく成功させてみよう。", 4: "【ヒント】長い言葉（高難易度）に積極的に挑戦しつつ、時々失敗して彼を翻弄してみよう。", 5: "【ヒント】長い言葉（高難易度）に果敢に挑戦し, 成功を積み重ねて想いを伝えきろう。", 6: "【ヒント】毎日欠かさず、一番短い言葉（低難易度）だけを紡いで、すべて成功させてみよう。", 7: "【ヒント】毎日欠かさず、標準的な言葉（中難易度）だけを選び、すべて成功させてみよう。", 8: "【ヒント】毎日欠かさず、一番長い言葉（高難易度）だけを選び、すべて成功させてみよう。", 9: "【ヒント】5日間、一度も成功させずに終わってみよう。言葉にできないもどかしさが、別の形に……？", 10: "【ヒント：Ending X】すべての記憶（他のエンディング）を取り戻した今、もう一度彼に触れてみよう。" };
 
         function generateEndingText(earnedEndingId) {
             let resultText = ["書き終え、そっと指を離す。", "彼は自分の手のひらを見つめ……やがて、私の手をぎゅっと握り返した。", "沈黙が落ちる。薪がパチッと音を立てた。"];

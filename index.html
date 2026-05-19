@@ -460,6 +460,7 @@
         let warningTimeoutId = null;
         let lastTime = 0;
         let isGameLoopRunning = false;
+        let rafId = null;
         let currentChoice = null;
         let audioCtx = null;
         let touchGain = null;
@@ -470,6 +471,18 @@
         let lastY = 0;
         let pathDist = 0;
 
+        function addMsgListener() {
+            msgBox.addEventListener('click', handleMsgClick);
+        }
+        function removeMsgListener() {
+            msgBox.removeEventListener('click', handleMsgClick);
+        }
+
+        function handleMsgClick() {
+            if (phase === 'text') advanceText();
+        }
+        addMsgListener();
+
         function resizeCanvas() {
             if(!canvas) return;
             const dpr = window.devicePixelRatio || 1;
@@ -479,16 +492,10 @@
             canvas.style.width = `${rect.width}px`;
             canvas.style.height = `${rect.height}px`;
             ctx = canvas.getContext('2d');
-            ctx.setTransform(1, 0, 0, 1, 0, 0); 
-            ctx.scale(dpr, dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         }
 
         window.addEventListener('resize', resizeCanvas);
-
-        function handleMsgClick() {
-            if (phase === 'text') advanceText();
-        }
-        if(msgBox) msgBox.addEventListener('click', handleMsgClick);
 
         function playText(texts, onComplete) {
             currentTextSequence = [...texts];
@@ -525,7 +532,7 @@
             lastTime = performance.now();
             if (!isGameLoopRunning) {
                 isGameLoopRunning = true;
-                requestAnimationFrame(gameLoop);
+                rafId = requestAnimationFrame(gameLoop);
             }
             
             startDay();
@@ -766,7 +773,9 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('title-screen').classList.add('active');
             renderBadges();
+            
             isGameLoopRunning = false;
+            if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
             if(audioCtx) { audioCtx.close(); audioCtx = null; }
         }
 
@@ -823,10 +832,8 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
             
-            if(msgBox) {
-                msgBox.removeEventListener('click', handleMsgClick);
-                msgBox.onclick = advanceText;
-            }
+            removeMsgListener();
+            msgBox.onclick = advanceText;
             
             resizeCanvas(); 
             drawInstruction.style.display = 'none'; gaugeLabel.style.display = 'none'; gaugeContainer.style.display = 'none';
@@ -842,7 +849,7 @@
                 nextMark.style.display = 'none'; 
                 msgBox.onclick = () => { 
                     msgBox.onclick = null; 
-                    msgBox.addEventListener('click', handleMsgClick); 
+                    addMsgListener(); 
                     showTitle(); 
                 };
             });
@@ -856,7 +863,7 @@
             { day: 5, label: "最終日", intro: ["そして、５日目の夜。", "「お前が何書きたいのか、ちゃんと知りたい。教えてくれ」", "彼の真剣な眼差し。もう誤魔化しはきかない。", "（彼の手のひらに、私の本当の想いを……なんて書こう？）"], choices: [{ text: "「る」", req: 1, reward: 2, diff: 0 }, { text: "「だいすき」", req: 15, reward: 4, diff: 1 }, { text: "「あいしてる」", req: 8, reward: 6, diff: 2 }] }
         ];
 
-        const endingHints = { 1: "【ヒント】あまり欲張らず、短い言葉（低難易度）を中心に選んで接してみよう。", 2: "【ヒント】標準的な長さの言葉（中難易度）を選びつつ、時々失敗を混ぜてみよう。", 3: "【ヒント】標準的な長さの言葉（中難易度）を選びつつ、なるべく成功させてみよう。", 4: "【ヒント】長い言葉（高難易度）に積極的に挑戦しつつ、時々失敗して彼を翻弄してみよう。", 5: "【ヒント】長い言葉（高難易度）に果敢に挑戦し、成功を積み重ねて想いを伝えきろう。", 6: "【ヒント】毎日欠かさず、一番短い言葉（低難易度）だけを紡いで、すべて成功させてみよう。", 7: "【ヒント】毎日欠かさず、標準的な言葉（中難易度）だけを選び、すべて成功させてみよう。", 8: "【ヒント】毎日欠かさず、一番長い言葉（高難易度）だけを選び、すべて成功させてみよう。", 9: "【ヒント】5日間、一度も成功させずに終わってみよう。言葉にできないもどかしさが、別の形に……？", 10: "【ヒント：Ending X】すべての記憶（他のエンディング）を取り戻した今、もう一度彼に触れてみよう。" };
+        const endingHints = { 1: "【ヒント】あまり欲張らず、短い言葉（低難易度）を中心に選んで接してみよう。", 2: "【ヒント】標準的な長さの言葉（中難易度）を選びつつ、時々失敗を混ぜてみよう。", 3: "【ヒント】標準的な長さの言葉（中難易度）を選びつつ、なるべく成功させてみよう。", 4: "【ヒント】長い言葉（高難易度）に積極的に挑戦しつつ、時々失敗して彼を翻弄してみよう。", 5: "【ヒント】長い言葉（高難易度）に果敢に挑戦し, 成功を積み重ねて想いを伝えきろう。", 6: "【ヒント】毎日欠かさず、一番短い言葉（低難易度）だけを紡いで、すべて成功させてみよう。", 7: "【ヒント】毎日欠かさず、標準的な言葉（中難易度）だけを選び、すべて成功させてみよう。", 8: "【ヒント】毎日欠かさず、一番長い言葉（高難易度）だけを選び、すべて成功させてみよう。", 9: "【ヒント】5日間、一度も成功させずに終わってみよう。言葉にできないもどかしさが、別の形に……？", 10: "【ヒント：Ending X】すべての記憶（他のエンディング）を取り戻した今、もう一度彼に触れてみよう。" };
 
         function initAudio() {
             if(audioCtx) {
@@ -924,7 +931,14 @@
             if (lockedEndings.length === 0) resultText.push("全エンディングコンプリート！おめでとうございます！");
             else { let hintId = (lockedEndings.length === 1 && lockedEndings[0] === 10) ? 10 : lockedEndings.filter(x => x !== 10)[Math.floor(Math.random() * lockedEndings.filter(x => x !== 10).length)]; resultText.push(endingHints[hintId]); }
             resultText.push("〜 タイトルに戻ります 〜");
-            playText(resultText, () => { nextMark.style.display = 'none'; msgBox.onclick = () => { msgBox.onclick = null; msgBox.addEventListener('click', handleMsgClick); showTitle(); }; });
+            playText(resultText, () => {
+                nextMark.style.display = 'none'; 
+                msgBox.onclick = () => { 
+                    msgBox.onclick = null; 
+                    addMsgListener(); 
+                    showTitle(); 
+                };
+            });
         }
 
         function gameLoop(timestamp) {
@@ -952,8 +966,10 @@
                     ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; 
                     ctx.fillRect(0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
                 }
-            } else { lastTime = timestamp; }
-            requestAnimationFrame(gameLoop);
+            } else { 
+                lastTime = timestamp; 
+            }
+            rafId = requestAnimationFrame(gameLoop);
         }
 
         window.addEventListener('DOMContentLoaded', showTitle);

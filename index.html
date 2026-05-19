@@ -412,6 +412,16 @@
         let lastY = 0;
         let pathDist = 0;
 
+        function resetGameState() {
+            playerAffection = 0;
+            currentDayIdx = 0;
+            choiceHistory = [];
+            tickleGauge = 0;
+            timeRemaining = 0;
+            warningEndTime = 0;
+            phase = 'title';
+        }
+
         function handleMsgClick() {
             if (phase === 'text') advanceText();
         }
@@ -478,14 +488,11 @@
         }
 
         function startGame() {
+            resetGameState();
             getAudioContext();
-            initAudio(); // 修正①
+            initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
-            
-            playerAffection = 0;
-            currentDayIdx = 0;
-            choiceHistory = [];
             
             resizeCanvas();
             startLoop();
@@ -498,7 +505,7 @@
                 ctx.save();
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
                 ctx.fillStyle = '#FFF9F5';
-                ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr); // 修正②
+                ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
                 ctx.restore();
             }
         }
@@ -655,7 +662,7 @@
                     success: success,
                     req: currentChoice.req,
                     actual: currentStrokes,
-                    timestamp: Date.now()
+                    timestamp: performance.now()
                 });
                 if (success) playerAffection += currentChoice.reward;
             }
@@ -670,13 +677,14 @@
         }
 
         function showDynamicWarning(text, duration) {
-            if (Date.now() < warningEndTime) return;
+            const now = performance.now();
+            if (now < warningEndTime) return;
             if (warningText) {
                 warningText.innerText = text;
                 warningText.style.opacity = '1';
-                warningEndTime = Date.now() + duration;
+                warningEndTime = now + duration;
                 setTimeout(() => {
-                    if (Date.now() >= warningEndTime) warningText.style.opacity = '0';
+                    if (performance.now() >= warningEndTime) warningText.style.opacity = '0';
                 }, duration);
             }
         }
@@ -781,14 +789,13 @@
 
         function getAudioContext() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            // 修正⑤
             if (audioCtx.state === 'suspended') audioCtx.resume();
             return audioCtx;
         }
 
         function initAudio() {
+            if (audioNoiseNode) return; 
             const ctx = getAudioContext();
-            stopAudio();
             const bufferSize = ctx.sampleRate * 2;
             const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
             const output = buffer.getChannelData(0);
@@ -831,6 +838,7 @@
         }
 
         function replayEnding(id) {
+            resetGameState();
             getAudioContext();
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -895,11 +903,9 @@
         }
 
         function gameLoop(timestamp) {
-            // 修正④
             if (!isGameLoopRunning) return;
             
             if (phase === 'draw') {
-                // 修正③
                 let dt = Math.min(timestamp - lastTime, 32); 
                 lastTime = timestamp;
                 timeRemaining -= dt;
@@ -909,7 +915,7 @@
                 if(gaugeBar) gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
                 if(blushOverlay) blushOverlay.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
                 
-                if (Date.now() >= warningEndTime) {
+                if (performance.now() >= warningEndTime) {
                     if (timeRemaining <= 4000) showDynamicWarning("「……時間, まだ？」", 2000);
                     else if (tickleGauge >= 90) showDynamicWarning("「待って, そこ…っ」", 1500);
                     else if (tickleGauge >= 60) showDynamicWarning("「ちょっと…」", 1500);
@@ -919,7 +925,6 @@
                 if (timeRemaining <= 0 || tickleGauge >= 100) endDrawPhase(false);
                 
                 if(ctx && canvas) {
-                    // 修正②
                     const dpr = window.devicePixelRatio || 1;
                     ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; 
                     ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
@@ -938,7 +943,7 @@
             { day: 2, label: "２日目", intro: ["翌日の夜。", "「……あんま、くすぐったくすんなよ」", "そう言いながらも、彼は自然に手を差し出してくれた。", "（今日はもう少しだけ、踏み込んだことを書いてみようかな）"], choices: [{ text: "「い」", req: 2, reward: 1, diff: 0 }, { text: "「いつも」", req: 6, reward: 2, diff: 1 }, { text: "「きもちいい」", req: 14, reward: 3, diff: 2 }], success: ["「……お前、手あったかいな」", "（ぽつりと呟いた彼の耳が、少し赤くなっている気がした）"], fail: ["「あーっ！ もう限界！」", "（手のひらは敏感なんだ、と彼はムスッとしている。次こそは……）"] },
             { day: 3, label: "３日目", intro: ["３日目の夜。今日は彼の方から無言で手が差し出された。", "（今日は, 少し長めに書いてみようかな……？）"], choices: [{ text: "「し」", req: 1, reward: 1, diff: 0 }, { text: "「がんばれ」", req: 13, reward: 2, diff: 1 }, { text: "「ありがとう」", req: 14, reward: 3, diff: 2 }], success: ["「……もっと、続けてもいいぞ」", "（そっぽを向きながら言った彼の声に、胸の奥がぎゅっとする）"], fail: ["「……っ、ん、やっぱ無理！！」", "（変に力が入ってしまった。もどかしいけれど、このやり取りも悪くないかも）"] },
             { day: 4, label: "４日目", intro: ["４日目。", "「……最近、お前のマッサージがないと落ち着かないかも」", "無自覚にそんなことを言う彼に、心臓が破裂しそうだ。", "（今日こそ、もっと踏み込んだ言葉を……）"], choices: [{ text: "「て」", req: 1, reward: 1, diff: 0 }, { text: "「あしたも」", req: 11, reward: 2, diff: 1 }, { text: "「ずっといっしょ」", req: 13, reward: 3, diff: 2 }], success: ["「……ん。なんか、すごく落ち着く」", "（確かな温もりが伝わってくる。いよいよ明日は、一番伝えたいことを……）"], fail: ["「あーもう、ごめん！ 限界！！」", "（あともう少しだったのに！ 彼の耳は真っ赤に染まっている）"] },
-            { day: 5, label: "最終日", intro: ["そして、５日目の夜。", "「お前が何書きたいのか、ちゃんと知りたい。教えてくれ」", "彼の真剣な眼差し。もう誤魔化しはきかない。", "（彼の手のひらに、私の本当の想いを……なんて書こう？）"], choices: [{ text: "「る」", req: 1, reward: 2, diff: 0 }, { text: "「だいすき」", req: 15, reward: 4, diff: 1 }, { text: "「あいしてる」", req: 8, reward: 6, diff: 2 }] }
+            { day: 5, label: "最終日", intro: ["そして、５日目の夜。", "「お前が何書きたいのか、ちゃんと知りたい。教えてくれ」", "彼の真剣な眼差し。もう誤魔化しはきかない。", "（彼の手のひらに、私の本当の想いを……なんて書こう？）"], choices: [{ text: "「る」", req: 1, reward: 2, diff: 0 }, { text: "「だいすき」", req: 15, reward: 4, diff: 1 }, { text: "「あいしてる」", req: 8, reward: 6, diff: 2 }], success: ["「……全部、伝わったよ」", "（彼は優しく私の手を取った）"], fail: ["「……っ、ん、やっぱ無理！！」", "（最後も失敗してしまった……）"] }
         ];
 
         const endingHints = { 1: "【ヒント】あまり欲張らず、短い言葉（低難易度）を中心に選んで接してみよう。", 2: "【ヒント】標準的な長さの言葉（中難易度）を選びつつ、時々失敗を混ぜてみよう。", 3: "【ヒント】標準的な長さの言葉（中難易度）を選びつつ、なるべく成功させてみよう。", 4: "【ヒント】長い言葉（高難易度）に積極的に挑戦しつつ、時々失敗して彼を翻弄してみよう。", 5: "【ヒント】長い言葉（高難易度）に果敢に挑戦し, 成功を積み重ねて想いを伝えきろう。", 6: "【ヒント】毎日欠かさず、一番短い言葉（低難易度）だけを紡いで、すべて成功させてみよう。", 7: "【ヒント】毎日欠かさず、標準的な言葉（中難易度）だけを選び、すべて成功させてみよう。", 8: "【ヒント】毎日欠かさず、一番長い言葉（高難易度）だけを選び、すべて成功させてみよう。", 9: "【ヒント】5日間、一度も成功させずに終わってみよう。言葉にできないもどかしさが、別の形に……？", 10: "【ヒント：Ending X】すべての記憶（他のエンディング）を取り戻した今、もう一度彼に触れてみよう。" };
@@ -956,46 +961,6 @@
             else if (earnedEndingId === 9) { resultText.push("【ED 9: 全失敗の優しいぬくもりエンド】", "結局, 5日間一度もまともに文字を書けなかった私を見て, 彼は吹き出した。", "「くすぐったいのは本当だけどさ。お前が毎回焦って失敗するの, 面白くて……ごめん」", "意地悪そうに笑う彼を叩くと, そのまま腕を引かれ, 温かい胸の中に閉じ込められた。", "「言葉なんてなくても, お前がいっしょうけんめい触れてくれただけで, 十分伝わってるよ」"); }
             else if (earnedEndingId === 10) { resultText.push("【ED 10: Ending X】", "「すべての記憶を辿って, また俺の手を握ってくれたんだな。……ありがとう」", "これまでの数々の結末, すれ違った日々, そして結ばれた瞬間。", "すべてを知った上で, 私はもう一度彼の隣に座り, この手をとった。", "「どんな結末になっても, 俺の隣にはいつもお前がいてくれた。……もう, 言葉なんてなくても伝わってるから」"); }
             return resultText;
-        }
-
-        function evaluateEnding() {
-            let earnedEndingId = 1;
-            const isAllSuccess = (targetDiff) => choiceHistory.length === 5 && choiceHistory.every(c => c.diff === targetDiff && c.success);
-            const isAllFail = choiceHistory.length === 5 && choiceHistory.every(c => !c.success);
-            const unlocked = getUnlockedEndings();
-            const allStandardEndingsUnlocked = [1,2,3,4,5,6,7,8,9].every(id => unlocked.includes(id));
-            if (allStandardEndingsUnlocked && !unlocked.includes(10)) earnedEndingId = 10;
-            else if (isAllFail) earnedEndingId = 9;
-            else if (isAllSuccess(0)) earnedEndingId = 6;
-            else if (isAllSuccess(1)) earnedEndingId = 7;
-            else if (isAllSuccess(2)) earnedEndingId = 8;
-            else {
-                let lowCount = 0, midCount = 0, highCount = 0;
-                choiceHistory.forEach(c => { if (c.diff === 0) lowCount++; else if (c.diff === 1) midCount++; else if (c.diff === 2) highCount++; });
-                let maxDiff = (highCount >= midCount && highCount >= lowCount) ? 2 : (midCount >= lowCount ? 1 : 0);
-                if (maxDiff === 0) earnedEndingId = 1; else if (maxDiff === 1) earnedEndingId = (playerAffection >= 6) ? 3 : 2; else earnedEndingId = (playerAffection >= 10) ? 5 : 4;
-            }
-            let isNew = !unlocked.includes(earnedEndingId);
-            if (isNew) saveEnding(earnedEndingId); 
-            else {
-                let keys = getSafeStorageNumber('secretHandshakeKeys', 0);
-                saveKeys(keys + 1); 
-            }
-            let resultText = generateEndingText(earnedEndingId);
-            if (!isNew) { resultText.push("★同じエンディングに到達したため、「てのひらの鍵」を1つ入手しました！", "【てのひらの鍵の使い方】\nスタート画面に戻り, 未解放（🔒）のバッジをタップすると, 鍵を1つ消費してエンディングを解放・閲覧することができます。"); }
-            resultText.push("〜 CLEAR！ プレイありがとうございました 〜");
-            const currentUnlocked = getUnlockedEndings();
-            const lockedEndings = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(x => !currentUnlocked.includes(x));
-            if (lockedEndings.length === 0) resultText.push("全エンディングコンプリート！おめでとうございます！");
-            else { let hintId = (lockedEndings.length === 1 && lockedEndings[0] === 10) ? 10 : lockedEndings.filter(x => x !== 10)[Math.floor(Math.random() * lockedEndings.filter(x => x !== 10).length)]; resultText.push(endingHints[hintId]); }
-            resultText.push("〜 タイトルに戻ります 〜");
-            playText(resultText, () => {
-                nextMark.style.display = 'none'; 
-                activeMsgHandler = () => {
-                    activeMsgHandler = handleMsgClick;
-                    showTitle();
-                };
-            });
         }
     </script>
 </body>

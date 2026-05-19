@@ -491,7 +491,6 @@
         function startGame() {
             stopLoop();
             resetGameState();
-            // ユーザー操作時のみオーディオ初期化
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
@@ -810,7 +809,8 @@
                 const bufferSize = ctx.sampleRate * 2;
                 const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
                 const output = buffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) output[i] = (Math.random() * 2 - 1) * 0.03;
+                // 振幅係数を0.03 -> 0.15 に引き上げ
+                for (let i = 0; i < bufferSize; i++) output[i] = (Math.random() * 2 - 1) * 0.15;
                 
                 audioNoiseNode = ctx.createBufferSource(); 
                 audioNoiseNode.buffer = buffer; 
@@ -819,13 +819,15 @@
                 audioNoiseFilter.type = 'lowpass'; 
                 audioNoiseFilter.frequency.value = 150;
                 audioNoiseGain = ctx.createGain(); 
-                audioNoiseGain.gain.value = 0.5;
+                // ゲインを0.5 -> 0.9 に引き上げ
+                audioNoiseGain.gain.value = 0.9;
                 audioNoiseNode.connect(audioNoiseFilter).connect(audioNoiseGain).connect(ctx.destination);
                 audioNoiseNode.start();
                 
                 const tBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
                 const tOutput = tBuffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) tOutput[i] = (Math.random() * 2 - 1) * 0.3;
+                // 振幅係数を0.3 -> 0.6 に引き上げ
+                for (let i = 0; i < bufferSize; i++) tOutput[i] = (Math.random() * 2 - 1) * 0.6;
                 audioTickleNode = ctx.createBufferSource(); 
                 audioTickleNode.buffer = tBuffer; 
                 audioTickleNode.loop = true;
@@ -870,7 +872,6 @@
 
         function evaluateEnding() {
             let earnedEndingId = 1;
-            // dailyDataの長さを基準に判定（5日固定からの脱却）
             const totalDays = dailyData.length;
             const isAllSuccess = (targetDiff) => choiceHistory.length === totalDays && choiceHistory.every(c => c.diff === targetDiff && c.success);
             const isAllFail = choiceHistory.length === totalDays && choiceHistory.every(c => !c.success);
@@ -937,14 +938,12 @@
             rafId = requestAnimationFrame(gameLoop);
         }
 
-        // 初回クリックでのAudioコンテキスト強制再開用イベント
         document.addEventListener('click', () => {
             if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
         }, { once: true });
 
         window.addEventListener('DOMContentLoaded', showTitle);
         
-        // --- Endings Data ---
         const dailyData = [
             { day: 1, label: "１日目", intro: ["夕食後の穏やかな時間。パチパチと暖炉の火が爆ぜる音が部屋に響いている。", "「……ほら、手。貸して」", "（……この手に、文字を書いてみたら、少しは伝わるかな？）", "（手始めに、なんて書いてみよう？）"], choices: [{ text: "「あ」", req: 3, reward: 1, diff: 0 }, { text: "「ねえ」", req: 6, reward: 2, diff: 1 }, { text: "「おつかれ」", req: 9, reward: 3, diff: 2 }], success: ["「……ん。なんか、悪くないな」", "（指先から伝わる彼の体温が、私の手にもじんわりと移ってくる）"], fail: ["「っ、ちょ！ くすぐったい！」", "（慌てて手を引っ込められてしまった……また明日、試してみよう）"] },
             { day: 2, label: "２日目", intro: ["翌日の夜。", "「……あんま、くすぐったくすんなよ」", "そう言いながらも, 彼は自然に手を差し出してくれた。", "（今日はもう少しだけ、踏み込んだことを書いてみようかな）"], choices: [{ text: "「い」", req: 2, reward: 1, diff: 0 }, { text: "「いつも」", req: 6, reward: 2, diff: 1 }, { text: "「きもちいい」", req: 14, reward: 3, diff: 2 }], success: ["「……お前、手あったかいな」", "（ぽつりと呟いた彼の耳が、少し赤くなっている気がした）"], fail: ["「あーっ！ もう限界！」", "（手のひらは敏感なんだ、と彼はムスッとしている。次こそは……）"] },

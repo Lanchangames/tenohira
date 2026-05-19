@@ -412,14 +412,6 @@
         let lastY = 0;
         let pathDist = 0;
 
-        // SNSシェア用関数
-        function shareResult(endingId) {
-            const text = `「ゆびさきで秘密を」で、エンディング「${endingId}」に到達しました！`;
-            const url = encodeURIComponent(window.location.href);
-            const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`;
-            window.open(tweetUrl, '_blank');
-        }
-
         function resetGameState() {
             playerAffection = 0;
             currentDayIdx = 0;
@@ -497,8 +489,7 @@
 
         function startGame() {
             resetGameState();
-            // ユーザー操作による初回AudioContext Resume
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            // AudioはinitAudioの中で初期化・制御する
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
@@ -513,7 +504,6 @@
                 const dpr = window.devicePixelRatio || 1;
                 ctx.save();
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
-                // 背景色と一致させる
                 ctx.fillStyle = '#FFF3E0';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.restore();
@@ -776,7 +766,11 @@
                 modalBtns.appendChild(createBtn('いいえ', null));
             } else {
                 if (hasShare) {
-                    modalBtns.appendChild(createBtn('Xでシェア', () => shareResult(endingId)));
+                    modalBtns.appendChild(createBtn('Xでシェア', () => {
+                        const text = `「ゆびさきで秘密を」で、エンディング「${endingId}」に到達しました！`;
+                        const url = encodeURIComponent(window.location.href);
+                        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`, '_blank');
+                    }));
                 }
                 modalBtns.appendChild(createBtn('OK', onConfirm));
             }
@@ -805,9 +799,11 @@
         }
 
         function initAudio() {
+            // 常に初期化前に停止処理を行う
+            stopAudio();
+            
             const ctx = getAudioContext();
             if (ctx.state === 'suspended') ctx.resume();
-            if (audioNoiseNode) return; 
             
             const bufferSize = ctx.sampleRate * 2;
             const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -838,11 +834,16 @@
                 audioNoiseNode.disconnect();
                 audioNoiseNode = null;
             }
+            if (audioNoiseFilter) { audioNoiseFilter.disconnect(); audioNoiseFilter = null; }
+            if (audioNoiseGain) { audioNoiseGain.disconnect(); audioNoiseGain = null; }
+            
             if (audioTickleNode) {
                 try { audioTickleNode.stop(); } catch(e) {}
                 audioTickleNode.disconnect();
                 audioTickleNode = null;
             }
+            if (audioTickleFilter) { audioTickleFilter.disconnect(); audioTickleFilter = null; }
+            if (audioTickleGain) { audioTickleGain.disconnect(); audioTickleGain = null; }
         }
 
         function replayEnding(id) {

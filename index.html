@@ -606,11 +606,13 @@
             
             isDrawing = true;
             const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             
-            lastX = clientX - rect.left;
-            lastY = clientY - rect.top;
+            lastX = (clientX - rect.left) * scaleX;
+            lastY = (clientY - rect.top) * scaleY;
             pathDist = 0;
             
             if (audioCtx && audioTickleBuffer) {
@@ -631,11 +633,13 @@
             if (e.cancelable) e.preventDefault();
             
             const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             
-            const x = clientX - rect.left;
-            const y = clientY - rect.top;
+            const x = (clientX - rect.left) * scaleX;
+            const y = (clientY - rect.top) * scaleY;
             
             const dist = Math.hypot(x - lastX, y - lastY);
             pathDist += dist;

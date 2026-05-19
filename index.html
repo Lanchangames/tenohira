@@ -568,6 +568,11 @@
             currentChoice = choice;
             lastTime = performance.now();
             
+            if (canvas) {
+                ctx.fillStyle = '#FFF9F5';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            
             if (drawInstruction) drawInstruction.style.display = 'block';
             if (gaugeLabel) gaugeLabel.style.display = 'block';
             if (gaugeContainer) gaugeContainer.style.display = 'block';
@@ -616,14 +621,15 @@
                 const cy = area.y * canvas.height;
                 const cr = area.r * canvas.width;
                 if (Math.hypot(x - cx, y - cy) < cr) {
-                    bonus = 3.0;
+                    bonus = 2.0; 
                     if(touchGain) {
                         touchGain.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.01);
                         touchGain.gain.setTargetAtTime(0, audioCtx.currentTime + 0.1, 0.01);
                     }
                 }
             });
-            tickleGauge += (dist * 0.5) * bonus;
+            
+            tickleGauge += (dist * 0.08) * bonus;
 
             lastX = x;
             lastY = y;
@@ -632,15 +638,6 @@
         function stopDrawing(e) {
             if (!isDrawing || phase !== 'draw') return;
             isDrawing = false;
-            
-            let clientX, clientY;
-            if (e.changedTouches) {
-                clientX = e.changedTouches[0].clientX;
-                clientY = e.changedTouches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
             
             currentStrokes++;
             if (strokeCounter && currentChoice) {
@@ -729,8 +726,10 @@
         }
 
         function renderBadges() {
-            document.getElementById('key-display').innerText = `てのひらの鍵: ${playerKeys} 個`;
+            const display = document.getElementById('key-display');
+            if(display) display.innerText = `てのひらの鍵: ${playerKeys} 個`;
             const container = document.getElementById('badge-container');
+            if(!container) return;
             container.innerHTML = '';
             for (let i = 1; i <= 10; i++) {
                 const badge = document.createElement('div');
@@ -919,10 +918,15 @@
                     else if (tickleGauge >= 30 && Math.random() < 0.02) showDynamicWarning("「ふふ、くすぐったい」", 1500);
                 }
                 if (timeRemaining <= 0 || tickleGauge >= 100) endDrawPhase(false);
-                ctx.fillStyle = 'rgba(255, 249, 245, 0.02)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // フェード効果（背景色に少し透明度を持たせて描画）
+                ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
             } else { lastTime = timestamp; }
             if (isGameLoopRunning) requestAnimationFrame(gameLoop);
         }
+
+        window.addEventListener('DOMContentLoaded', showTitle);
     </script>
 </body>
 </html>

@@ -457,14 +457,18 @@
         let timeRemaining = 0;
         let tickleGauge = 0;
         let warningShown = false;
+        let warningTimeoutId = null;
         let lastTime = 0;
         let isGameLoopRunning = false;
         let currentChoice = null;
+        let audioCtx = null;
+        let touchGain = null;
         
         let isDrawing = false;
         let currentStrokes = 0;
         let lastX = 0;
         let lastY = 0;
+        let pathDist = 0;
 
         function resizeCanvas() {
             if(!canvas) return;
@@ -474,7 +478,9 @@
             canvas.height = rect.height * dpr;
             canvas.style.width = `${rect.width}px`;
             canvas.style.height = `${rect.height}px`;
-            if (ctx) ctx.scale(dpr, dpr);
+            ctx = canvas.getContext('2d');
+            ctx.setTransform(1, 0, 0, 1, 0, 0); 
+            ctx.scale(dpr, dpr);
         }
 
         window.addEventListener('resize', resizeCanvas);
@@ -514,7 +520,6 @@
             currentDayIdx = 0;
             choiceHistory = [];
             
-            if(!ctx && canvas) ctx = canvas.getContext('2d');
             resizeCanvas();
             
             lastTime = performance.now();
@@ -607,8 +612,9 @@
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            lastX = (clientX - rect.left) * (window.devicePixelRatio || 1);
-            lastY = (clientY - rect.top) * (window.devicePixelRatio || 1);
+            lastX = clientX - rect.left;
+            lastY = clientY - rect.top;
+            pathDist = 0;
         }
 
         function draw(e) {
@@ -617,22 +623,23 @@
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            const x = (clientX - rect.left) * (window.devicePixelRatio || 1);
-            const y = (clientY - rect.top) * (window.devicePixelRatio || 1);
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
             
             const dist = Math.hypot(x - lastX, y - lastY);
+            pathDist += dist;
 
             if (ctx) {
                 ctx.beginPath();
                 ctx.moveTo(lastX, lastY);
                 ctx.lineTo(x, y);
                 ctx.strokeStyle = '#D84315';
-                ctx.lineWidth = 6 * (window.devicePixelRatio || 1);
+                ctx.lineWidth = 6;
                 ctx.lineCap = 'round';
                 ctx.stroke();
             }
             
-            tickleGauge += (dist * 0.13 / (window.devicePixelRatio || 1));
+            tickleGauge += (dist * 0.13);
 
             lastX = x;
             lastY = y;
@@ -642,12 +649,14 @@
             if (!isDrawing || phase !== 'draw') return;
             isDrawing = false;
             
-            currentStrokes++;
-            if (strokeCounter && currentChoice) {
-                const remain = Math.max(0, currentChoice.req - currentStrokes);
-                strokeCounter.innerText = `残り: ${remain} 画`;
-                if (currentStrokes >= currentChoice.req) {
-                    if (finishBtn) finishBtn.style.display = 'block';
+            if (pathDist > 20) {
+                currentStrokes++;
+                if (strokeCounter && currentChoice) {
+                    const remain = Math.max(0, currentChoice.req - currentStrokes);
+                    strokeCounter.innerText = `残り: ${remain} 画`;
+                    if (currentStrokes >= currentChoice.req) {
+                        if (finishBtn) finishBtn.style.display = 'block';
+                    }
                 }
             }
         }
@@ -656,6 +665,7 @@
             canvas.addEventListener('mousedown', startDrawing);
             canvas.addEventListener('mousemove', draw);
             canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
             canvas.addEventListener('touchstart', startDrawing, {passive: false});
             canvas.addEventListener('touchmove', draw, {passive: false});
             canvas.addEventListener('touchend', stopDrawing);
@@ -678,8 +688,10 @@
             if (finishBtn) finishBtn.style.display = 'none';
             if (blushOverlay) blushOverlay.style.opacity = '0';
             
-            choiceHistory.push({ diff: currentChoice.diff, success: success });
-            if (success) playerAffection += currentChoice.reward;
+            if (currentChoice) {
+                choiceHistory.push({ diff: currentChoice.diff, success: success });
+                if (success) playerAffection += currentChoice.reward;
+            }
             
             const day = dailyData[currentDayIdx];
             const texts = success ? day.success : day.fail;
@@ -691,11 +703,12 @@
         }
 
         function showDynamicWarning(text, duration) {
+            if (warningTimeoutId) clearTimeout(warningTimeoutId);
             warningShown = true;
             if (warningText) {
                 warningText.innerText = text;
                 warningText.style.opacity = '1';
-                setTimeout(() => {
+                warningTimeoutId = setTimeout(() => {
                     warningText.style.opacity = '0';
                     warningShown = false;
                 }, duration);
@@ -754,6 +767,7 @@
             document.getElementById('title-screen').classList.add('active');
             renderBadges();
             isGameLoopRunning = false;
+            if(audioCtx) { audioCtx.close(); audioCtx = null; }
         }
 
         function showHowTo() {
@@ -805,13 +819,14 @@
         }
 
         function replayEnding(id) {
-            if(!ctx && canvas) ctx = canvas.getContext('2d');
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
             
-            if(msgBox) msgBox.removeEventListener('click', handleMsgClick);
-            msgBox.onclick = advanceText; 
+            if(msgBox) {
+                msgBox.removeEventListener('click', handleMsgClick);
+                msgBox.onclick = advanceText;
+            }
             
             resizeCanvas(); 
             drawInstruction.style.display = 'none'; gaugeLabel.style.display = 'none'; gaugeContainer.style.display = 'none';
@@ -843,7 +858,6 @@
 
         const endingHints = { 1: "【ヒント】あまり欲張らず、短い言葉（低難易度）を中心に選んで接してみよう。", 2: "【ヒント】標準的な長さの言葉（中難易度）を選びつつ、時々失敗を混ぜてみよう。", 3: "【ヒント】標準的な長さの言葉（中難易度）を選びつつ、なるべく成功させてみよう。", 4: "【ヒント】長い言葉（高難易度）に積極的に挑戦しつつ、時々失敗して彼を翻弄してみよう。", 5: "【ヒント】長い言葉（高難易度）に果敢に挑戦し、成功を積み重ねて想いを伝えきろう。", 6: "【ヒント】毎日欠かさず、一番短い言葉（低難易度）だけを紡いで、すべて成功させてみよう。", 7: "【ヒント】毎日欠かさず、標準的な言葉（中難易度）だけを選び、すべて成功させてみよう。", 8: "【ヒント】毎日欠かさず、一番長い言葉（高難易度）だけを選び、すべて成功させてみよう。", 9: "【ヒント】5日間、一度も成功させずに終わってみよう。言葉にできないもどかしさが、別の形に……？", 10: "【ヒント：Ending X】すべての記憶（他のエンディング）を取り戻した今、もう一度彼に触れてみよう。" };
 
-        let audioCtx, touchGain;
         function initAudio() {
             if(audioCtx) {
                 if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -888,7 +902,6 @@
             const isAllSuccess = (targetDiff) => choiceHistory.length === 5 && choiceHistory.every(c => c.diff === targetDiff && c.success);
             const isAllFail = choiceHistory.length === 5 && choiceHistory.every(c => !c.success);
             
-            // 全エンディング(1-9)が解放されているか正確に判定
             const allStandardEndingsUnlocked = [1,2,3,4,5,6,7,8,9].every(id => unlockedEndings.includes(id));
             
             if (allStandardEndingsUnlocked && !unlockedEndings.includes(10)) earnedEndingId = 10;
@@ -936,8 +949,8 @@
                 if (timeRemaining <= 0 || tickleGauge >= 100) endDrawPhase(false);
                 
                 if(ctx && canvas) {
-                    ctx.fillStyle = 'rgba(255, 249, 245, 0.15)'; 
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; 
+                    ctx.fillRect(0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
                 }
             } else { lastTime = timestamp; }
             requestAnimationFrame(gameLoop);

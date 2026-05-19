@@ -415,7 +415,6 @@
         let lastY = 0;
         let pathDist = 0;
         
-        // タッチデバイスかどうかを判定（二重発火防止用）
         const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
         function clearAllTimeouts() {
@@ -455,29 +454,16 @@
             return isNaN(num) ? defaultValue : num;
         }
 
+        // ① Canvas座標/DPRの統一
         function resizeCanvas() {
             if(!canvas) return;
-            
-            // CSSによる柔軟なリサイズ(100%)を活かすため、インラインのpx指定を解除
-            canvas.style.width = '';
-            canvas.style.height = '';
-            
             const rect = canvas.getBoundingClientRect();
-            // 非表示などでサイズが取れない場合は中断
             if (rect.width === 0 || rect.height === 0) return;
-            
             const dpr = Math.min(window.devicePixelRatio || 1, 2);
-            
-            // 物理ピクセルを整数値で計算（小数による描画ズレ・フェード不整合を根絶）
-            const physicalWidth = Math.round(rect.width * dpr);
-            const physicalHeight = Math.round(rect.height * dpr);
-            
-            canvas.width = physicalWidth;
-            canvas.height = physicalHeight;
-            
+            canvas.width = Math.round(rect.width * dpr);
+            canvas.height = Math.round(rect.height * dpr);
             ctx = canvas.getContext('2d');
-            // 論理ピクセル(CSS)と物理ピクセルの比率を厳密にマッピング
-            ctx.setTransform(physicalWidth / rect.width, 0, 0, physicalHeight / rect.height, 0, 0);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         }
 
         window.addEventListener('resize', resizeCanvas);
@@ -623,8 +609,9 @@
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            lastX = clientX - rect.left;
-            lastY = clientY - rect.top;
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            lastX = (clientX - rect.left) * dpr;
+            lastY = (clientY - rect.top) * dpr;
             pathDist = 0;
             
             if (audioCtx && audioTickleBuffer) {
@@ -647,8 +634,9 @@
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            const x = clientX - rect.left;
-            const y = clientY - rect.top;
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const x = (clientX - rect.left) * dpr;
+            const y = (clientY - rect.top) * dpr;
             
             const dist = Math.hypot(x - lastX, y - lastY);
             pathDist += dist;
@@ -658,11 +646,11 @@
                 ctx.moveTo(lastX, lastY);
                 ctx.lineTo(x, y);
                 ctx.strokeStyle = '#D84315';
-                ctx.lineWidth = 6;
+                ctx.lineWidth = 6 * dpr;
                 ctx.lineCap = 'round';
                 ctx.stroke();
             }
-            tickleGauge += (dist * 0.13);
+            tickleGauge += (dist * 0.13 / dpr);
             lastX = x;
             lastY = y;
         }
@@ -872,6 +860,7 @@
             return audioCtx;
         }
 
+        // ② AudioContext安定化
         function initAudio() {
             const ctx = getAudioContext();
             if (!isAudioGraphBuilt) {
@@ -902,6 +891,20 @@
             }
             if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
         }
+
+        // ユーザーインタラクションによるAudioContextのレジューム
+        ['click', 'touchstart'].forEach(evt => {
+            document.addEventListener(evt, () => {
+                const ctx = getAudioContext();
+                if (ctx.state === 'suspended') ctx.resume();
+            }, { passive: true });
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        });
 
         function replayEnding(id) {
             clearAllTimeouts();
@@ -1001,18 +1004,6 @@
                 rafId = requestAnimationFrame(gameLoop);
             }
         }
-
-        ['click', 'touchstart'].forEach(evt => {
-            document.addEventListener(evt, () => {
-                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            }, { passive: true });
-        });
-
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && audioCtx && audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-        });
 
         window.addEventListener('DOMContentLoaded', showTitle);
         

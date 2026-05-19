@@ -398,7 +398,6 @@
         let rafId = null;
         let currentChoice = null;
         
-        // 【修正②】runIdによる世代管理
         let runId = 0;
         
         let audioCtx = null;
@@ -414,7 +413,6 @@
         let lastY = 0;
         let pathDist = 0;
         
-        // 【修正②】現在の実行世代以外を無視するタイマー管理
         function clearAllTimeouts() {
             runId++;
         }
@@ -450,10 +448,12 @@
         function resizeCanvas() {
             if(!canvas) return;
             const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
+            // 【修正③】DPR対応
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
             ctx = canvas.getContext('2d');
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         }
 
         window.addEventListener('resize', resizeCanvas);
@@ -591,15 +591,16 @@
             if (finishBtn) finishBtn.style.display = 'none'; 
         }
 
-        // 【修正①】setPointerCaptureの実装
+        // 【修正①】PointerCaptureの実装と解除
         function startDrawing(e) {
             if (phase !== 'draw') return;
             isDrawing = true;
             canvas.setPointerCapture(e.pointerId);
             
+            const dpr = window.devicePixelRatio || 1;
             const rect = canvas.getBoundingClientRect();
-            lastX = e.clientX - rect.left;
-            lastY = e.clientY - rect.top;
+            lastX = (e.clientX - rect.left) * dpr;
+            lastY = (e.clientY - rect.top) * dpr;
             pathDist = 0;
             
             if (audioCtx && audioTickleBuffer) {
@@ -615,9 +616,10 @@
         function draw(e) {
             if (!isDrawing || phase !== 'draw') return;
             
+            const dpr = window.devicePixelRatio || 1;
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            const x = (e.clientX - rect.left) * dpr;
+            const y = (e.clientY - rect.top) * dpr;
             
             const dist = Math.hypot(x - lastX, y - lastY);
             pathDist += dist;
@@ -627,11 +629,11 @@
                 ctx.moveTo(lastX, lastY);
                 ctx.lineTo(x, y);
                 ctx.strokeStyle = '#D84315';
-                ctx.lineWidth = 6;
+                ctx.lineWidth = 6 * dpr;
                 ctx.lineCap = 'round';
                 ctx.stroke();
             }
-            tickleGauge = Math.min(100, tickleGauge + (dist * 0.13));
+            tickleGauge = Math.min(100, tickleGauge + (dist * 0.13 / dpr));
             lastX = x;
             lastY = y;
 
@@ -641,6 +643,7 @@
         function stopDrawing(e) {
             if (!isDrawing || phase !== 'draw') return;
             isDrawing = false;
+            canvas.releasePointerCapture(e.pointerId);
             
             stopAudioTickle();
 
@@ -654,7 +657,6 @@
             }
         }
 
-        // 【修正③】Audioノードのガード付き停止処理
         function stopAudioTickle() {
             if (audioTickleGain) audioTickleGain.gain.value = 0;
             if (audioTickleNode) {
@@ -713,14 +715,16 @@
 
         function showDynamicWarning(text, duration) {
             const now = performance.now();
+            const currentRun = runId;
             if (now < warningEndTime) return;
             if (warningText) {
                 warningText.innerText = text;
                 warningText.style.opacity = '1';
                 warningEndTime = now + duration;
                 
-                // 【修正②】タイマーガードはここでは直接的な事故が起きにくいため既存維持
+                // 【修正②】runIdによるガード
                 setTimeout(() => { 
+                    if (currentRun !== runId) return;
                     if (performance.now() >= warningEndTime && warningText) warningText.style.opacity = '0'; 
                 }, duration);
             }
@@ -863,7 +867,6 @@
             if (ctx.state === 'suspended') ctx.resume();
         }
 
-        // 【修正③】Audioの安全な停止
         function stopAudio() {
             stopAudioTickle();
             if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
@@ -966,10 +969,12 @@
                 if (timeRemaining <= 0 || tickleGauge >= 100) endDrawPhase(false);
                 
                 if(ctx && canvas) {
+                    // DPRを考慮した描画維持
+                    const dpr = window.devicePixelRatio || 1;
                     ctx.save();
-                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
                     ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; 
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
                     ctx.restore();
                 }
             } else { 

@@ -435,7 +435,7 @@
             canvas.height = rect.height * dpr;
             canvas.style.width = `${rect.width}px`;
             canvas.style.height = `${rect.height}px`;
-            if (!ctx) ctx = canvas.getContext('2d');
+            ctx = canvas.getContext('2d');
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         }
 
@@ -471,19 +471,22 @@
         }
 
         function startLoop() {
+            if (isGameLoopRunning) return;
             isGameLoopRunning = true;
             lastTime = performance.now();
-            if (rafId) cancelAnimationFrame(rafId);
             rafId = requestAnimationFrame(gameLoop);
         }
 
         function startGame() {
             getAudioContext();
+            initAudio(); // 修正①
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
+            
             playerAffection = 0;
             currentDayIdx = 0;
             choiceHistory = [];
+            
             resizeCanvas();
             startLoop();
             startDay();
@@ -491,10 +494,11 @@
 
         function clearCanvas() {
             if (ctx && canvas) {
+                const dpr = window.devicePixelRatio || 1;
                 ctx.save();
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
                 ctx.fillStyle = '#FFF9F5';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr); // 修正②
                 ctx.restore();
             }
         }
@@ -502,6 +506,7 @@
         function startDay() {
             if (msgBox) msgBox.style.display = 'none'; 
             clearCanvas(); 
+            
             if (currentDayIdx >= dailyData.length) {
                 evaluateEnding();
                 return;
@@ -548,7 +553,9 @@
             warningEndTime = 0;
             currentChoice = choice;
             lastTime = performance.now();
+            
             clearCanvas();
+            
             if (drawInstruction) drawInstruction.style.display = 'block';
             if (gaugeLabel) gaugeLabel.style.display = 'block';
             if (gaugeContainer) gaugeContainer.style.display = 'block';
@@ -580,8 +587,10 @@
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             const x = clientX - rect.left;
             const y = clientY - rect.top;
+            
             const dist = Math.hypot(x - lastX, y - lastY);
             pathDist += dist;
+
             if (ctx) {
                 ctx.beginPath();
                 ctx.moveTo(lastX, lastY);
@@ -600,6 +609,7 @@
             if (!isDrawing || phase !== 'draw') return;
             e.preventDefault();
             isDrawing = false;
+            
             if (pathDist > 35) {
                 currentStrokes++;
                 if (strokeCounter && currentChoice) {
@@ -638,12 +648,21 @@
             if (timeCounter) timeCounter.style.display = 'none';
             if (finishBtn) finishBtn.style.display = 'none';
             if (blushOverlay) blushOverlay.style.opacity = '0';
+            
             if (currentChoice) {
-                choiceHistory.push({ diff: currentChoice.diff, success: success, req: currentChoice.req, actual: currentStrokes, timestamp: Date.now() });
+                choiceHistory.push({ 
+                    diff: currentChoice.diff, 
+                    success: success,
+                    req: currentChoice.req,
+                    actual: currentStrokes,
+                    timestamp: Date.now()
+                });
                 if (success) playerAffection += currentChoice.reward;
             }
+            
             const day = dailyData[currentDayIdx];
             const texts = success ? day.success : day.fail;
+            
             playText(texts || ["……"], () => {
                 currentDayIdx++;
                 startDay();
@@ -657,7 +676,7 @@
                 warningText.style.opacity = '1';
                 warningEndTime = Date.now() + duration;
                 setTimeout(() => {
-                    if (warningText && Date.now() >= warningEndTime) warningText.style.opacity = '0';
+                    if (Date.now() >= warningEndTime) warningText.style.opacity = '0';
                 }, duration);
             }
         }
@@ -679,10 +698,12 @@
             let playerKeys = getSafeStorageNumber('secretHandshakeKeys', 0);
             const display = document.getElementById('key-display');
             if(display) display.innerText = `てのひらの鍵: ${playerKeys} 個`;
+            
             const container = document.getElementById('badge-container');
             if(!container) return;
             container.innerHTML = '';
             const unlocked = getUnlockedEndings();
+
             for (let i = 1; i <= 10; i++) {
                 const badge = document.createElement('div');
                 badge.className = 'badge';
@@ -720,6 +741,7 @@
             const modalBtns = document.getElementById('modal-buttons');
             modalText.innerHTML = text.replace(/\n/g, '<br>');
             modalBtns.innerHTML = '';
+            
             const createBtn = (btnText, onClick) => {
                 const btn = document.createElement('button');
                 btn.className = 'menu-btn';
@@ -759,6 +781,7 @@
 
         function getAudioContext() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            // 修正⑤
             if (audioCtx.state === 'suspended') audioCtx.resume();
             return audioCtx;
         }
@@ -831,6 +854,85 @@
             });
         }
 
+        function evaluateEnding() {
+            let earnedEndingId = 1;
+            const isAllSuccess = (targetDiff) => choiceHistory.length === 5 && choiceHistory.every(c => c.diff === targetDiff && c.success);
+            const isAllFail = choiceHistory.length === 5 && choiceHistory.every(c => !c.success);
+            const unlocked = getUnlockedEndings();
+            const allStandardEndingsUnlocked = [1,2,3,4,5,6,7,8,9].every(id => unlocked.includes(id));
+            if (allStandardEndingsUnlocked && !unlocked.includes(10)) earnedEndingId = 10;
+            else if (isAllFail) earnedEndingId = 9;
+            else if (isAllSuccess(0)) earnedEndingId = 6;
+            else if (isAllSuccess(1)) earnedEndingId = 7;
+            else if (isAllSuccess(2)) earnedEndingId = 8;
+            else {
+                let lowCount = 0, midCount = 0, highCount = 0;
+                choiceHistory.forEach(c => { if (c.diff === 0) lowCount++; else if (c.diff === 1) midCount++; else if (c.diff === 2) highCount++; });
+                let maxDiff = (highCount >= midCount && highCount >= lowCount) ? 2 : (midCount >= lowCount ? 1 : 0);
+                if (maxDiff === 0) earnedEndingId = 1; else if (maxDiff === 1) earnedEndingId = (playerAffection >= 6) ? 3 : 2; else earnedEndingId = (playerAffection >= 10) ? 5 : 4;
+            }
+            let isNew = !unlocked.includes(earnedEndingId);
+            if (isNew) saveEnding(earnedEndingId); 
+            else {
+                let keys = getSafeStorageNumber('secretHandshakeKeys', 0);
+                saveKeys(keys + 1); 
+            }
+            let resultText = generateEndingText(earnedEndingId);
+            if (!isNew) { resultText.push("★同じエンディングに到達したため、「てのひらの鍵」を1つ入手しました！", "【てのひらの鍵の使い方】\nスタート画面に戻り, 未解放（🔒）のバッジをタップすると, 鍵を1つ消費してエンディングを解放・閲覧することができます。"); }
+            resultText.push("〜 CLEAR！ プレイありがとうございました 〜");
+            const currentUnlocked = getUnlockedEndings();
+            const lockedEndings = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(x => !currentUnlocked.includes(x));
+            if (lockedEndings.length === 0) resultText.push("全エンディングコンプリート！おめでとうございます！");
+            else { let hintId = (lockedEndings.length === 1 && lockedEndings[0] === 10) ? 10 : lockedEndings.filter(x => x !== 10)[Math.floor(Math.random() * lockedEndings.filter(x => x !== 10).length)]; resultText.push(endingHints[hintId]); }
+            resultText.push("〜 タイトルに戻ります 〜");
+            playText(resultText, () => {
+                nextMark.style.display = 'none'; 
+                activeMsgHandler = () => {
+                    activeMsgHandler = handleMsgClick;
+                    showTitle();
+                };
+            });
+        }
+
+        function gameLoop(timestamp) {
+            // 修正④
+            if (!isGameLoopRunning) return;
+            
+            if (phase === 'draw') {
+                // 修正③
+                let dt = Math.min(timestamp - lastTime, 32); 
+                lastTime = timestamp;
+                timeRemaining -= dt;
+                if(timeCounter) timeCounter.innerText = `残り時間: ${Math.max(0, timeRemaining / 1000).toFixed(1)}秒`;
+                
+                tickleGauge = Math.max(0, tickleGauge - (0.01 * dt));
+                if(gaugeBar) gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
+                if(blushOverlay) blushOverlay.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
+                
+                if (Date.now() >= warningEndTime) {
+                    if (timeRemaining <= 4000) showDynamicWarning("「……時間, まだ？」", 2000);
+                    else if (tickleGauge >= 90) showDynamicWarning("「待って, そこ…っ」", 1500);
+                    else if (tickleGauge >= 60) showDynamicWarning("「ちょっと…」", 1500);
+                    else if (tickleGauge >= 30 && Math.random() < 0.02) showDynamicWarning("「ふふ, くすぐったい」", 1500);
+                }
+                
+                if (timeRemaining <= 0 || tickleGauge >= 100) endDrawPhase(false);
+                
+                if(ctx && canvas) {
+                    // 修正②
+                    const dpr = window.devicePixelRatio || 1;
+                    ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; 
+                    ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+                }
+            } else { 
+                lastTime = timestamp; 
+            }
+            rafId = requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('DOMContentLoaded', showTitle);
+        
+        // --- Endings Data ---
         const dailyData = [
             { day: 1, label: "１日目", intro: ["夕食後の穏やかな時間。パチパチと暖炉の火が爆ぜる音が部屋に響いている。", "「……ほら、手。貸して」", "（……この手に、文字を書いてみたら、少しは伝わるかな？）", "（手始めに、なんて書いてみよう？）"], choices: [{ text: "「あ」", req: 3, reward: 1, diff: 0 }, { text: "「ねえ」", req: 6, reward: 2, diff: 1 }, { text: "「おつかれ」", req: 9, reward: 3, diff: 2 }], success: ["「……ん。なんか、悪くないな」", "（指先から伝わる彼の体温が、私の手にもじんわりと移ってくる）"], fail: ["「っ、ちょ！ くすぐったい！」", "（慌てて手を引っ込められてしまった……また明日、試してみよう）"] },
             { day: 2, label: "２日目", intro: ["翌日の夜。", "「……あんま、くすぐったくすんなよ」", "そう言いながらも、彼は自然に手を差し出してくれた。", "（今日はもう少しだけ、踏み込んだことを書いてみようかな）"], choices: [{ text: "「い」", req: 2, reward: 1, diff: 0 }, { text: "「いつも」", req: 6, reward: 2, diff: 1 }, { text: "「きもちいい」", req: 14, reward: 3, diff: 2 }], success: ["「……お前、手あったかいな」", "（ぽつりと呟いた彼の耳が、少し赤くなっている気がした）"], fail: ["「あーっ！ もう限界！」", "（手のひらは敏感なんだ、と彼はムスッとしている。次こそは……）"] },
@@ -895,36 +997,6 @@
                 };
             });
         }
-
-        function gameLoop(timestamp) {
-            if (!isGameLoopRunning) return;
-            if (phase === 'draw') {
-                let dt = Math.min(timestamp - lastTime, 32); 
-                lastTime = timestamp;
-                timeRemaining -= dt;
-                if(timeCounter) timeCounter.innerText = `残り時間: ${Math.max(0, timeRemaining / 1000).toFixed(1)}秒`;
-                tickleGauge = Math.max(0, tickleGauge - (0.01 * dt));
-                if(gaugeBar) gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
-                if(blushOverlay) blushOverlay.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
-                if (Date.now() >= warningEndTime) {
-                    if (timeRemaining <= 4000) showDynamicWarning("「……時間, まだ？」", 2000);
-                    else if (tickleGauge >= 90) showDynamicWarning("「待って, そこ…っ」", 1500);
-                    else if (tickleGauge >= 60) showDynamicWarning("「ちょっと…」", 1500);
-                    else if (tickleGauge >= 30 && Math.random() < 0.02) showDynamicWarning("「ふふ, くすぐったい」", 1500);
-                }
-                if (timeRemaining <= 0 || tickleGauge >= 100) endDrawPhase(false);
-                if(ctx && canvas) {
-                    const dpr = window.devicePixelRatio || 1;
-                    ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; 
-                    ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-                }
-            } else { 
-                lastTime = timestamp; 
-            }
-            rafId = requestAnimationFrame(gameLoop);
-        }
-
-        window.addEventListener('DOMContentLoaded', showTitle);
     </script>
 </body>
 </html>

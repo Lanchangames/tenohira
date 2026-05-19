@@ -57,7 +57,7 @@
         #badge-box {
             background-color: rgba(255, 255, 255, 0.85);
             border: 2px dashed #FFAB91; 
-            border-radius: 15px;
+            border-radius: 0;
             padding: 15px;
             width: 80%;
             margin-bottom: 30px;
@@ -86,7 +86,7 @@
         .badge {
             width: 38px;
             height: 38px;
-            border-radius: 12px;
+            border-radius: 0;
             background-color: #FFF;
             border: 2px solid #FFE0B2;
             display: flex;
@@ -127,7 +127,7 @@
             height: 55px;
             background-color: #FF8A65;
             border: none; 
-            border-radius: 30px;
+            border-radius: 0;
             color: #FFF;
             font-size: 18px;
             font-weight: bold;
@@ -147,7 +147,7 @@
             color: #5D4037;
             background-color: rgba(255, 255, 255, 0.95);
             padding: 20px 15px;
-            border-radius: 15px;
+            border-radius: 0;
             border: 2px dashed #FFAB91;
             width: 85%;
             font-size: 14px;
@@ -219,7 +219,7 @@
             height: 14px;
             background-color: #FFE0B2;
             border: 3px solid #FFF;
-            border-radius: 10px;
+            border-radius: 0;
             z-index: 2;
             display: none;
             overflow: hidden;
@@ -301,7 +301,7 @@
             height: 25%;
             background-color: rgba(255, 255, 255, 0.95);
             border: 3px solid #FFAB91; 
-            border-radius: 15px;
+            border-radius: 0;
             padding: 18px;
             box-sizing: border-box;
             z-index: 3;
@@ -336,7 +336,7 @@
             background-color: #FF8A65;
             border: none;
             color: white;
-            border-radius: 30px;
+            border-radius: 0;
             z-index: 4;
             display: none;
             font-family: inherit;
@@ -423,7 +423,7 @@
         </div>
 
         <div id="custom-modal" class="screen" style="background-color: rgba(62, 39, 35, 0.8); z-index: 100;">
-            <div style="background-color: #FFF3E0; border: 3px dashed #FFAB91; border-radius: 15px; padding: 25px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; color: #5D4037;">
+            <div style="background-color: #FFF3E0; border: 3px dashed #FFAB91; border-radius: 0; padding: 25px; width: 85%; max-width: 320px; box-sizing: border-box; text-align: center; color: #5D4037;">
                 <p id="modal-text" style="font-size: 15px; font-weight: bold; line-height: 1.6; margin-top: 0;"></p>
                 <div id="modal-buttons" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;"></div>
             </div>
@@ -431,7 +431,6 @@
     </div>
 
     <script>
-        // DOM要素の取得
         const canvas = document.getElementById('canvas-layer');
         const ctx = canvas ? canvas.getContext('2d') : null;
         const msgBox = document.getElementById('message-box');
@@ -474,7 +473,6 @@
             }
         }
 
-        // ウィンドウサイズやスマホの向きが変わった際にキャンバスサイズを合わせる処理を追加（ロジック変更なし）
         window.addEventListener('resize', resizeCanvas);
 
         function playText(texts, onComplete) {
@@ -649,7 +647,6 @@
             canvas.addEventListener('touchend', stopDrawing);
         }
 
-        // 冗長な条件分岐（デッドコード）を削除
         function completeDrawPhase() {
             if (currentChoice && currentStrokes >= currentChoice.req) {
                 endDrawPhase(true);
@@ -932,15 +929,20 @@
 
         let audioCtx, touchGain;
         function initAudio() {
-            if(audioCtx) return;
+            if(audioCtx) {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                return;
+            }
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const bufferSize = audioCtx.sampleRate * 2;
             const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const output = buffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) output[i] = (Math.random() * 2 - 1) * 0.03;
             const noise = audioCtx.createBufferSource(); noise.buffer = buffer; noise.loop = true;
-            const fireFilter = audioCtx.createBiquadFilter(); fireFilter.type = 'lowpass'; fireFilter.frequency.value = 250;
-            noise.connect(fireFilter); fireFilter.connect(audioCtx.destination); noise.start();
+            const fireFilter = audioCtx.createBiquadFilter(); fireFilter.type = 'lowpass'; fireFilter.frequency.value = 150;
+            const fireGain = audioCtx.createGain(); fireGain.gain.value = 0.5;
+            noise.connect(fireFilter); fireFilter.connect(fireGain); fireGain.connect(audioCtx.destination); noise.start();
+            
             const tBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const tOutput = tBuffer.getChannelData(0);
             for (let i = 0; i < bufferSize; i++) tOutput[i] = (Math.random() * 2 - 1) * 0.3;
@@ -1084,11 +1086,14 @@
         window.addEventListener('DOMContentLoaded', showTitle);
 
         let typingStrokes = [];
-        window.addEventListener('keydown', () => {
+        const handleRapidInput = () => {
             const now = performance.now(); typingStrokes.push(now);
             typingStrokes = typingStrokes.filter(t => now - t < 2000);
             if(phase === 'draw') tickleGauge += (typingStrokes.length / 2) * 1.5;
-        });
+        };
+        window.addEventListener('keydown', handleRapidInput);
+        window.addEventListener('touchstart', handleRapidInput, {passive: true});
+
         const sensitiveAreas = [{ x: 0.25, y: 0.35, r: 0.12 }, { x: 0.75, y: 0.55, r: 0.15 }];
 
         function gameLoop(timestamp) {
@@ -1097,9 +1102,11 @@
                 let dt = timestamp - lastTime; lastTime = timestamp;
                 timeRemaining -= dt;
                 timeCounter.innerText = `残り時間: ${Math.max(0, timeRemaining / 1000).toFixed(1)}秒`;
-                tickleGauge = Math.max(0, tickleGauge - 0.3);
-                gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
+                
+                tickleGauge = Math.min(100, tickleGauge);
+                gaugeBar.style.width = tickleGauge + '%';
                 blushOverlay.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
+                
                 if (!warningShown) {
                     if (timeRemaining <= 4000) showDynamicWarning("「……時間、まだ？」", 2000);
                     else if (tickleGauge >= 90) showDynamicWarning("「待って、そこ…っ」", 1500);

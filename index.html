@@ -398,7 +398,6 @@
         let rafId = null;
         let currentChoice = null;
         
-        // 音響管理
         let audioCtx = null;
         let isAudioGraphBuilt = false;
         let audioNoiseNode = null;
@@ -483,15 +482,16 @@
         }
 
         function startLoop() {
-            stopLoop(); // 重複起動防止
+            stopLoop();
             isGameLoopRunning = true;
             lastTime = performance.now();
             rafId = requestAnimationFrame(gameLoop);
         }
 
         function startGame() {
-            stopLoop(); // 確実に止めてから開始
+            stopLoop();
             resetGameState();
+            // ユーザー操作時のみオーディオ初期化
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
@@ -503,7 +503,6 @@
 
         function clearCanvas() {
             if (ctx && canvas) {
-                const dpr = window.devicePixelRatio || 1;
                 ctx.save();
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
                 ctx.fillStyle = '#FFF3E0';
@@ -563,7 +562,6 @@
             currentChoice = choice;
             lastTime = performance.now();
             
-            // ビジュアル面での初期化
             if (gaugeBar) gaugeBar.style.width = '0%';
             if (blushOverlay) blushOverlay.style.opacity = '0';
             
@@ -808,12 +806,8 @@
 
         function initAudio() {
             const ctx = getAudioContext();
-            
-            // ノードを破棄せず、初回のみグラフを構築して使い回す（安定化）
             if (!isAudioGraphBuilt) {
                 const bufferSize = ctx.sampleRate * 2;
-                
-                // ノイズ音源構築
                 const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
                 const output = buffer.getChannelData(0);
                 for (let i = 0; i < bufferSize; i++) output[i] = (Math.random() * 2 - 1) * 0.03;
@@ -821,54 +815,39 @@
                 audioNoiseNode = ctx.createBufferSource(); 
                 audioNoiseNode.buffer = buffer; 
                 audioNoiseNode.loop = true;
-                
                 audioNoiseFilter = ctx.createBiquadFilter(); 
                 audioNoiseFilter.type = 'lowpass'; 
                 audioNoiseFilter.frequency.value = 150;
-                
                 audioNoiseGain = ctx.createGain(); 
                 audioNoiseGain.gain.value = 0.5;
-                
                 audioNoiseNode.connect(audioNoiseFilter).connect(audioNoiseGain).connect(ctx.destination);
                 audioNoiseNode.start();
                 
-                // くすぐったさ音源構築
                 const tBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
                 const tOutput = tBuffer.getChannelData(0);
                 for (let i = 0; i < bufferSize; i++) tOutput[i] = (Math.random() * 2 - 1) * 0.3;
-                
                 audioTickleNode = ctx.createBufferSource(); 
                 audioTickleNode.buffer = tBuffer; 
                 audioTickleNode.loop = true;
-                
                 audioTickleFilter = ctx.createBiquadFilter(); 
                 audioTickleFilter.type = 'bandpass'; 
                 audioTickleFilter.frequency.value = 600;
-                
                 audioTickleGain = ctx.createGain(); 
                 audioTickleGain.gain.value = 0;
-                
                 audioTickleNode.connect(audioTickleFilter).connect(audioTickleGain).connect(ctx.destination);
                 audioTickleNode.start();
                 
                 isAudioGraphBuilt = true;
             }
-
-            // オーディオコンテキストの一時停止状態を解除するだけで音を出す
-            if (ctx.state === 'suspended') {
-                ctx.resume();
-            }
+            if (ctx.state === 'suspended') ctx.resume();
         }
 
         function stopAudio() {
-            // ノードを破壊せず、コンテキスト全体を一時停止させることで安全に無音化する
-            if (audioCtx && audioCtx.state === 'running') {
-                audioCtx.suspend();
-            }
+            if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
         }
 
         function replayEnding(id) {
-            stopLoop(); // 確実に止めてから開始
+            stopLoop();
             resetGameState();
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -891,10 +870,13 @@
 
         function evaluateEnding() {
             let earnedEndingId = 1;
-            const isAllSuccess = (targetDiff) => choiceHistory.length === 5 && choiceHistory.every(c => c.diff === targetDiff && c.success);
-            const isAllFail = choiceHistory.length === 5 && choiceHistory.every(c => !c.success);
+            // dailyDataの長さを基準に判定（5日固定からの脱却）
+            const totalDays = dailyData.length;
+            const isAllSuccess = (targetDiff) => choiceHistory.length === totalDays && choiceHistory.every(c => c.diff === targetDiff && c.success);
+            const isAllFail = choiceHistory.length === totalDays && choiceHistory.every(c => !c.success);
             const unlocked = getUnlockedEndings();
             const allStandardEndingsUnlocked = [1,2,3,4,5,6,7,8,9].every(id => unlocked.includes(id));
+            
             if (allStandardEndingsUnlocked && !unlocked.includes(10)) earnedEndingId = 10;
             else if (isAllFail) earnedEndingId = 9;
             else if (isAllSuccess(0)) earnedEndingId = 6;
@@ -943,7 +925,6 @@
                 if (timeRemaining <= 0 || tickleGauge >= 100) endDrawPhase(false);
                 
                 if(ctx && canvas) {
-                    // キャンバスの基準点を一時的にリセットして描画することで、残像やゴミを防ぐ
                     ctx.save();
                     ctx.setTransform(1, 0, 0, 1, 0, 0);
                     ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; 

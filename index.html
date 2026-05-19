@@ -398,9 +398,8 @@
         let rafId = null;
         let currentChoice = null;
         
-        let dayTransitionTimeout1 = null;
-        let dayTransitionTimeout2 = null;
-        let warningTimeout = null;
+        // 【修正②】runIdによる世代管理
+        let runId = 0;
         
         let audioCtx = null;
         let isAudioGraphBuilt = false;
@@ -415,13 +414,9 @@
         let lastY = 0;
         let pathDist = 0;
         
+        // 【修正②】現在の実行世代以外を無視するタイマー管理
         function clearAllTimeouts() {
-            if (dayTransitionTimeout1) clearTimeout(dayTransitionTimeout1);
-            if (dayTransitionTimeout2) clearTimeout(dayTransitionTimeout2);
-            if (warningTimeout) clearTimeout(warningTimeout);
-            dayTransitionTimeout1 = null;
-            dayTransitionTimeout2 = null;
-            warningTimeout = null;
+            runId++;
         }
 
         function resetGameState() {
@@ -524,7 +519,7 @@
         function startDay() {
             if (msgBox) msgBox.style.display = 'none'; 
             clearCanvas(); 
-            clearAllTimeouts();
+            const currentRun = runId;
             
             if (currentDayIdx >= dailyData.length) {
                 evaluateEnding();
@@ -539,12 +534,13 @@
                 transition.innerText = day.label;
                 transition.style.opacity = '1';
                 
-                dayTransitionTimeout1 = setTimeout(() => {
-                    if (phase !== 'transition') return;
+                setTimeout(() => {
+                    if (currentRun !== runId) return;
                     transition.style.opacity = '0';
-                    dayTransitionTimeout2 = setTimeout(() => {
-                        if (phase !== 'transition') return;
+                    setTimeout(() => {
+                        if (currentRun !== runId) return;
                         playText(day.intro, () => {
+                            if (currentRun !== runId) return;
                             if (day.choices) showChoices(day.choices);
                             else evaluateEnding(); 
                         });
@@ -595,20 +591,19 @@
             if (finishBtn) finishBtn.style.display = 'none'; 
         }
 
+        // 【修正①】setPointerCaptureの実装
         function startDrawing(e) {
             if (phase !== 'draw') return;
-            e.preventDefault();
-            
             isDrawing = true;
+            canvas.setPointerCapture(e.pointerId);
+            
             const rect = canvas.getBoundingClientRect();
             lastX = e.clientX - rect.left;
             lastY = e.clientY - rect.top;
             pathDist = 0;
             
             if (audioCtx && audioTickleBuffer) {
-                if (audioTickleNode) {
-                    try { audioTickleNode.stop(); audioTickleNode.disconnect(); } catch(e) {}
-                }
+                stopAudioTickle();
                 audioTickleNode = audioCtx.createBufferSource();
                 audioTickleNode.buffer = audioTickleBuffer;
                 audioTickleNode.loop = true;
@@ -619,7 +614,6 @@
 
         function draw(e) {
             if (!isDrawing || phase !== 'draw') return;
-            e.preventDefault();
             
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -646,15 +640,9 @@
 
         function stopDrawing(e) {
             if (!isDrawing || phase !== 'draw') return;
-            e.preventDefault();
-            
             isDrawing = false;
             
-            if (audioTickleGain) audioTickleGain.gain.value = 0;
-            if (audioTickleNode) {
-                try { audioTickleNode.stop(); audioTickleNode.disconnect(); } catch(err) {}
-                audioTickleNode = null;
-            }
+            stopAudioTickle();
 
             currentStrokes++;
             if (strokeCounter && currentChoice) {
@@ -663,6 +651,18 @@
                 if (currentStrokes >= currentChoice.req) {
                     if (finishBtn) finishBtn.style.display = 'block';
                 }
+            }
+        }
+
+        // 【修正③】Audioノードのガード付き停止処理
+        function stopAudioTickle() {
+            if (audioTickleGain) audioTickleGain.gain.value = 0;
+            if (audioTickleNode) {
+                try { 
+                    audioTickleNode.stop(); 
+                    audioTickleNode.disconnect(); 
+                } catch(err) {}
+                audioTickleNode = null;
             }
         }
 
@@ -700,11 +700,7 @@
                 if (success) playerAffection += currentChoice.reward;
             }
             
-            if (audioTickleGain) audioTickleGain.gain.value = 0;
-            if (audioTickleNode) {
-                try { audioTickleNode.stop(); audioTickleNode.disconnect(); } catch(e) {}
-                audioTickleNode = null;
-            }
+            stopAudioTickle();
             
             const day = dailyData[currentDayIdx];
             const texts = success ? day.success : day.fail;
@@ -723,9 +719,9 @@
                 warningText.style.opacity = '1';
                 warningEndTime = now + duration;
                 
-                if (warningTimeout) clearTimeout(warningTimeout);
-                warningTimeout = setTimeout(() => {
-                    if (performance.now() >= warningEndTime && warningText) warningText.style.opacity = '0';
+                // 【修正②】タイマーガードはここでは直接的な事故が起きにくいため既存維持
+                setTimeout(() => { 
+                    if (performance.now() >= warningEndTime && warningText) warningText.style.opacity = '0'; 
                 }, duration);
             }
         }
@@ -867,11 +863,9 @@
             if (ctx.state === 'suspended') ctx.resume();
         }
 
+        // 【修正③】Audioの安全な停止
         function stopAudio() {
-            if (audioTickleNode) {
-                try { audioTickleNode.stop(); audioTickleNode.disconnect(); } catch(e) {}
-                audioTickleNode = null;
-            }
+            stopAudioTickle();
             if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
         }
 

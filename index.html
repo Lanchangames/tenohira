@@ -400,9 +400,6 @@
         
         let audioCtx = null;
         let isAudioGraphBuilt = false;
-        let audioNoiseNode = null;
-        let audioNoiseFilter = null;
-        let audioNoiseGain = null;
         let audioTickleNode = null;
         let audioTickleFilter = null;
         let audioTickleGain = null;
@@ -670,7 +667,6 @@
                 if (success) playerAffection += currentChoice.reward;
             }
             
-            // 描画終了時、Tickle音を消す
             if (audioTickleGain) audioTickleGain.gain.value = 0;
             
             const day = dailyData[currentDayIdx];
@@ -810,22 +806,6 @@
             const ctx = getAudioContext();
             if (!isAudioGraphBuilt) {
                 const bufferSize = ctx.sampleRate * 2;
-                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-                const output = buffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) output[i] = (Math.random() * 2 - 1) * 0.15;
-                
-                audioNoiseNode = ctx.createBufferSource(); 
-                audioNoiseNode.buffer = buffer; 
-                audioNoiseNode.loop = true;
-                audioNoiseFilter = ctx.createBiquadFilter(); 
-                audioNoiseFilter.type = 'lowpass'; 
-                // 低音ノイズを軽減するため周波数を上げる
-                audioNoiseFilter.frequency.value = 400;
-                audioNoiseGain = ctx.createGain(); 
-                // ノイズが主張しすぎないようゲインを下げる
-                audioNoiseGain.gain.value = 0.05;
-                audioNoiseNode.connect(audioNoiseFilter).connect(audioNoiseGain).connect(ctx.destination);
-                audioNoiseNode.start();
                 
                 const tBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
                 const tOutput = tBuffer.getChannelData(0);
@@ -834,8 +814,8 @@
                 audioTickleNode.buffer = tBuffer; 
                 audioTickleNode.loop = true;
                 audioTickleFilter = ctx.createBiquadFilter(); 
-                audioTickleFilter.type = 'bandpass'; 
-                audioTickleFilter.frequency.value = 600;
+                audioTickleFilter.type = 'highpass'; 
+                audioTickleFilter.frequency.value = 3000;
                 audioTickleGain = ctx.createGain(); 
                 audioTickleGain.gain.value = 0;
                 audioTickleNode.connect(audioTickleFilter).connect(audioTickleGain).connect(ctx.destination);
@@ -916,9 +896,8 @@
                 
                 tickleGauge = Math.max(0, tickleGauge - (0.01 * dt));
                 
-                // ゲージに応じてTickle音量を変化させる
                 if (audioTickleGain) {
-                    audioTickleGain.gain.value = Math.min(1.0, tickleGauge / 100);
+                    audioTickleGain.gain.value = Math.min(0.05, tickleGauge / 200);
                 }
 
                 if(gaugeBar) gaugeBar.style.width = Math.min(100, tickleGauge) + '%';

@@ -568,6 +568,7 @@
             currentChoice = choice;
             lastTime = performance.now();
             
+            // 日付が変わったら前に書いたものを完全にクリア
             if (canvas) {
                 ctx.fillStyle = '#FFF9F5';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -614,22 +615,9 @@
                 ctx.lineCap = 'round';
                 ctx.stroke();
             }
-
-            let bonus = 1.0;
-            sensitiveAreas.forEach(area => {
-                const cx = area.x * canvas.width;
-                const cy = area.y * canvas.height;
-                const cr = area.r * canvas.width;
-                if (Math.hypot(x - cx, y - cy) < cr) {
-                    bonus = 2.0; 
-                    if(touchGain) {
-                        touchGain.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.01);
-                        touchGain.gain.setTargetAtTime(0, audioCtx.currentTime + 0.1, 0.01);
-                    }
-                }
-            });
             
-            tickleGauge += (dist * 0.08) * bonus;
+            // 敏感エリアのロジックを削除し、全体的に少しゲージが上がりづらい難易度に調整
+            tickleGauge += (dist * 0.13);
 
             lastX = x;
             lastY = y;
@@ -898,8 +886,6 @@
             playText(resultText, () => { nextMark.style.display = 'none'; msgBox.onclick = () => { msgBox.onclick = advanceText; showTitle(); }; });
         }
 
-        const sensitiveAreas = [{ x: 0.25, y: 0.35, r: 0.18 }, { x: 0.75, y: 0.55, r: 0.20 }];
-
         function gameLoop(timestamp) {
             if (phase === 'draw') {
                 let dt = Math.min(timestamp - lastTime, 32); 
@@ -919,8 +905,8 @@
                 }
                 if (timeRemaining <= 0 || tickleGauge >= 100) endDrawPhase(false);
                 
-                // フェード効果（背景色に少し透明度を持たせて描画）
-                ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; 
+                // 消え方を早めるためにalpha値を調整
+                ctx.fillStyle = 'rgba(255, 249, 245, 0.15)'; 
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             } else { lastTime = timestamp; }
             if (isGameLoopRunning) requestAnimationFrame(gameLoop);

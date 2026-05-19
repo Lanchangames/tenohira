@@ -415,8 +415,6 @@
         let lastY = 0;
         let pathDist = 0;
         
-        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
         function clearAllTimeouts() {
             if (dayTransitionTimeout1) clearTimeout(dayTransitionTimeout1);
             if (dayTransitionTimeout2) clearTimeout(dayTransitionTimeout2);
@@ -457,12 +455,10 @@
         function resizeCanvas() {
             if(!canvas) return;
             const rect = canvas.getBoundingClientRect();
-            if (rect.width === 0 || rect.height === 0) return;
-            const dpr = Math.min(window.devicePixelRatio || 1, 2);
-            canvas.width = Math.round(rect.width * dpr);
-            canvas.height = Math.round(rect.height * dpr);
+            canvas.width = rect.width;
+            canvas.height = rect.height;
             ctx = canvas.getContext('2d');
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
         }
 
         window.addEventListener('resize', resizeCanvas);
@@ -600,19 +596,13 @@
         }
 
         function startDrawing(e) {
-            if (isTouchDevice && e.type.startsWith('mouse')) return;
             if (phase !== 'draw') return;
-            if (e.cancelable) e.preventDefault();
+            e.preventDefault();
             
             isDrawing = true;
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
-            lastX = (clientX - rect.left) * scaleX;
-            lastY = (clientY - rect.top) * scaleY;
+            lastX = e.clientX - rect.left;
+            lastY = e.clientY - rect.top;
             pathDist = 0;
             
             if (audioCtx && audioTickleBuffer) {
@@ -628,18 +618,12 @@
         }
 
         function draw(e) {
-            if (isTouchDevice && e.type.startsWith('mouse')) return;
             if (!isDrawing || phase !== 'draw') return;
-            if (e.cancelable) e.preventDefault();
+            e.preventDefault();
             
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
-            const x = (clientX - rect.left) * scaleX;
-            const y = (clientY - rect.top) * scaleY;
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
             
             const dist = Math.hypot(x - lastX, y - lastY);
             pathDist += dist;
@@ -653,15 +637,16 @@
                 ctx.lineCap = 'round';
                 ctx.stroke();
             }
-            tickleGauge += (dist * 0.13);
+            tickleGauge = Math.min(100, tickleGauge + (dist * 0.13));
             lastX = x;
             lastY = y;
+
+            if (tickleGauge >= 100) endDrawPhase(false);
         }
 
         function stopDrawing(e) {
-            if (isTouchDevice && e.type.startsWith('mouse')) return;
             if (!isDrawing || phase !== 'draw') return;
-            if (e.cancelable) e.preventDefault();
+            e.preventDefault();
             
             isDrawing = false;
             
@@ -682,14 +667,10 @@
         }
 
         if (canvas) {
-            canvas.addEventListener('mousedown', startDrawing);
-            canvas.addEventListener('mousemove', draw);
-            canvas.addEventListener('mouseup', stopDrawing);
-            canvas.addEventListener('mouseleave', stopDrawing);
-            canvas.addEventListener('touchstart', startDrawing, {passive: false});
-            canvas.addEventListener('touchmove', draw, {passive: false});
-            canvas.addEventListener('touchend', stopDrawing, {passive: false});
-            canvas.addEventListener('touchcancel', stopDrawing, {passive: false});
+            canvas.addEventListener('pointerdown', startDrawing);
+            canvas.addEventListener('pointermove', draw);
+            canvas.addEventListener('pointerup', stopDrawing);
+            canvas.addEventListener('pointercancel', stopDrawing);
         }
 
         function completeDrawPhase() {

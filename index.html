@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ゆびさきで秘密を</title>
     <style>
         html, body {
@@ -15,6 +15,8 @@
             font-family: 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN', 'M PLUS Rounded 1c', 'Noto Serif JP', sans-serif;
             user-select: none;
             -webkit-user-select: none;
+            /* Safe area support */
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
         #game-container {
@@ -461,7 +463,11 @@
         let isGameLoopRunning = false;
         let rafId = null;
         let currentChoice = null;
+        
+        // Audio Management
         let audioCtx = null;
+        let audioNoiseNode = null;
+        let audioTickleNode = null;
         let touchGain = null;
         
         let isDrawing = false;
@@ -470,17 +476,25 @@
         let lastY = 0;
         let pathDist = 0;
 
-        function addMsgListener() {
-            msgBox.addEventListener('click', handleMsgClick);
+        // --- Storage Helpers ---
+        function getSafeStorageNumber(key, defaultValue) {
+            const val = localStorage.getItem(key);
+            const num = parseInt(val, 10);
+            return isNaN(num) ? defaultValue : num;
         }
-        function removeMsgListener() {
+
+        // --- Message Box Controller ---
+        function setMsgInteraction(handler) {
             msgBox.removeEventListener('click', handleMsgClick);
+            if (handler) {
+                msgBox.addEventListener('click', handler);
+            }
         }
 
         function handleMsgClick() {
             if (phase === 'text') advanceText();
         }
-        addMsgListener();
+        setMsgInteraction(handleMsgClick);
 
         function resizeCanvas() {
             if(!canvas) return;
@@ -513,7 +527,8 @@
                 }
                 return;
             }
-            if (msgText) msgText.innerHTML = currentTextSequence.shift();
+            // 修正: textContentでXSS対策
+            msgText.textContent = currentTextSequence.shift();
             if (nextMark) nextMark.style.display = currentTextSequence.length > 0 ? 'block' : 'none';
         }
 
@@ -593,7 +608,6 @@
             phase = 'draw';
             tickleGauge = 0;
             currentStrokes = 0; 
-            // 修正: 時間計算を線形から緩和
             timeRemaining = (choice.req * 1500) + 2000;
             warningEndTime = 0;
             currentChoice = choice;
@@ -654,10 +668,9 @@
 
         function stopDrawing(e) {
             if (!isDrawing || phase !== 'draw') return;
-            e.preventDefault(); // 修正: 誤動作防止
+            e.preventDefault();
             isDrawing = false;
             
-            // 修正: しきい値を 35 に引き上げ判定を厳密に
             if (pathDist > 35) {
                 currentStrokes++;
                 if (strokeCounter && currentChoice) {
@@ -698,7 +711,6 @@
             if (blushOverlay) blushOverlay.style.opacity = '0';
             
             if (currentChoice) {
-                // 修正: 履歴詳細化
                 choiceHistory.push({ 
                     diff: currentChoice.diff, 
                     success: success,
@@ -719,7 +731,6 @@
         }
 
         function showDynamicWarning(text, duration) {
-            // 修正: ブロック方式から時間制御方式へ変更
             if (Date.now() < warningEndTime) return;
             
             if (warningText) {
@@ -735,49 +746,53 @@
             }
         }
 
-        let unlockedEndings = [];
-        let playerKeys = 0;
-
-        try {
-            unlockedEndings = JSON.parse(localStorage.getItem('secretHandshakeEndings')) || [];
-            playerKeys = parseInt(localStorage.getItem('secretHandshakeKeys')) || 0;
-        } catch (e) {
-            unlockedEndings = [];
-            playerKeys = 0;
-        }
-
-        function saveEnding(id) {
-            if (!unlockedEndings.includes(id)) {
-                unlockedEndings.push(id);
-                try {
-                    localStorage.setItem('secretHandshakeEndings', JSON.stringify(unlockedEndings));
-                } catch (e) {}
+        // --- Data Persistence ---
+        function getUnlockedEndings() {
+            try {
+                return JSON.parse(localStorage.getItem('secretHandshakeEndings')) || [];
+            } catch (e) {
+                return [];
             }
         }
 
-        function saveKeys() {
-            try {
-                localStorage.setItem('secretHandshakeKeys', playerKeys);
-            } catch (e) {}
+        function saveEnding(id) {
+            const list = getUnlockedEndings();
+            if (!list.includes(id)) {
+                list.push(id);
+                localStorage.setItem('secretHandshakeEndings', JSON.stringify(list));
+            }
+        }
+
+        function saveKeys(count) {
+            localStorage.setItem('secretHandshakeKeys', count.toString());
         }
 
         function renderBadges() {
+            let playerKeys = getSafeStorageNumber('secretHandshakeKeys', 0);
             const display = document.getElementById('key-display');
             if(display) display.innerText = `てのひらの鍵: ${playerKeys} 個`;
+            
             const container = document.getElementById('badge-container');
             if(!container) return;
             container.innerHTML = '';
+            const unlocked = getUnlockedEndings();
+
             for (let i = 1; i <= 10; i++) {
                 const badge = document.createElement('div');
                 badge.className = 'badge';
-                if (unlockedEndings.includes(i)) {
-                    badge.innerText = i === 10 ? '★' : i;
+                badge.dataset.id = i.toString();
+                
+                if (unlocked.includes(i)) {
+                    badge.innerText = i === 10 ? '★' : i.toString();
                     badge.classList.add(i === 10 ? 'unlocked-x' : 'unlocked');
-                    badge.onclick = () => replayEnding(i);
                 } else {
                     badge.innerText = '🔒';
-                    badge.onclick = () => tryUnlockEnding(i);
                 }
+                
+                badge.addEventListener('click', () => {
+                    if (unlocked.includes(i)) replayEnding(i);
+                    else tryUnlockEnding(i);
+                });
                 container.appendChild(badge);
             }
         }
@@ -789,7 +804,7 @@
             
             isGameLoopRunning = false;
             if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-            if(audioCtx) { audioCtx.close(); audioCtx = null; }
+            stopAudio();
         }
 
         function showHowTo() {
@@ -804,6 +819,7 @@
             const modalBtns = document.getElementById('modal-buttons');
             modalText.innerHTML = text.replace(/\n/g, '<br>');
             modalBtns.innerHTML = '';
+            
             const createBtn = (btnText, onClick) => {
                 const btn = document.createElement('button');
                 btn.className = 'menu-btn';
@@ -826,17 +842,58 @@
         }
 
         function tryUnlockEnding(id) {
+            let playerKeys = getSafeStorageNumber('secretHandshakeKeys', 0);
             if (id === 10) {
                 showCustomModal('エンディング ★ は鍵で解放できません。\n他の9つのエンディングをすべて解放した状態で、もう一度プレイして最後までたどり着いてください。', false);
                 return;
             }
             if (playerKeys > 0) {
                 showCustomModal(`てのひらの鍵を1つ使って、エンディング ${id} を解放しますか？\n（残り鍵数: ${playerKeys}個）`, true, () => {
-                    playerKeys--; saveKeys(); saveEnding(id); renderBadges();
+                    playerKeys--; saveKeys(playerKeys); saveEnding(id); renderBadges();
                     showCustomModal(`エンディング ${id} を解放しました！\nバッジをタップして閲覧できます。`, false);
                 });
             } else {
                 showCustomModal('てのひらの鍵が足りません。\n同じエンディングに再度到達すると鍵がもらえます。', false);
+            }
+        }
+
+        function initAudio() {
+            if(audioCtx) {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                return;
+            }
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const bufferSize = audioCtx.sampleRate * 2;
+            
+            // Noise Loop
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const output = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) output[i] = (Math.random() * 2 - 1) * 0.03;
+            audioNoiseNode = audioCtx.createBufferSource(); 
+            audioNoiseNode.buffer = buffer; audioNoiseNode.loop = true;
+            const fireFilter = audioCtx.createBiquadFilter(); fireFilter.type = 'lowpass'; fireFilter.frequency.value = 150;
+            const fireGain = audioCtx.createGain(); fireGain.gain.value = 0.5;
+            audioNoiseNode.connect(fireFilter); fireFilter.connect(fireGain); fireGain.connect(audioCtx.destination); audioNoiseNode.start();
+            
+            // Tickle noise
+            const tBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const tOutput = tBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) tOutput[i] = (Math.random() * 2 - 1) * 0.3;
+            audioTickleNode = audioCtx.createBufferSource(); 
+            audioTickleNode.buffer = tBuffer; audioTickleNode.loop = true;
+            const tFilter = audioCtx.createBiquadFilter(); tFilter.type = 'bandpass'; tFilter.frequency.value = 600;
+            touchGain = audioCtx.createGain(); touchGain.gain.value = 0;
+            audioTickleNode.connect(tFilter); tFilter.connect(touchGain); touchGain.connect(audioCtx.destination); audioTickleNode.start();
+        }
+
+        function stopAudio() {
+            if (audioNoiseNode) audioNoiseNode.stop();
+            if (audioTickleNode) audioTickleNode.stop();
+            audioNoiseNode = null;
+            audioTickleNode = null;
+            if (audioCtx) {
+                audioCtx.close();
+                audioCtx = null;
             }
         }
 
@@ -845,26 +902,29 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
             
-            removeMsgListener();
-            msgBox.onclick = advanceText;
+            // 修正: メッセージイベントのクリーンな再設定
+            setMsgInteraction(() => {
+                if (phase === 'text') advanceText();
+            });
             
             resizeCanvas(); 
             drawInstruction.style.display = 'none'; gaugeLabel.style.display = 'none'; gaugeContainer.style.display = 'none';
             strokeCounter.style.display = 'none'; timeCounter.style.display = 'none'; warningText.style.opacity = '0';
             finishBtn.style.display = 'none'; choiceOverlay.style.display = 'none';
-            document.getElementById('blush-overlay').style.opacity = '0';
+            blushOverlay.style.opacity = '0';
             clearCanvas();
             
             let resultText = generateEndingText(id);
             resultText.unshift(`エンディング${id}を再生します`);
             resultText.push("〜 閲覧終了 〜"); resultText.push("〜 タイトルに戻ります 〜");
+            
             playText(resultText, () => {
                 nextMark.style.display = 'none'; 
-                msgBox.onclick = () => { 
-                    msgBox.onclick = null; 
-                    addMsgListener(); 
-                    showTitle(); 
-                };
+                // 完了時のコールバックを統一
+                setMsgInteraction(() => {
+                    setMsgInteraction(handleMsgClick);
+                    showTitle();
+                });
             });
         }
 
@@ -877,30 +937,6 @@
         ];
 
         const endingHints = { 1: "【ヒント】あまり欲張らず、短い言葉（低難易度）を中心に選んで接してみよう。", 2: "【ヒント】標準的な長さの言葉（中難易度）を選びつつ、時々失敗を混ぜてみよう。", 3: "【ヒント】標準的な長さの言葉（中難易度）を選びつつ、なるべく成功させてみよう。", 4: "【ヒント】長い言葉（高難易度）に積極的に挑戦しつつ、時々失敗して彼を翻弄してみよう。", 5: "【ヒント】長い言葉（高難易度）に果敢に挑戦し, 成功を積み重ねて想いを伝えきろう。", 6: "【ヒント】毎日欠かさず、一番短い言葉（低難易度）だけを紡いで、すべて成功させてみよう。", 7: "【ヒント】毎日欠かさず、標準的な言葉（中難易度）だけを選び、すべて成功させてみよう。", 8: "【ヒント】毎日欠かさず、一番長い言葉（高難易度）だけを選び、すべて成功させてみよう。", 9: "【ヒント】5日間、一度も成功させずに終わってみよう。言葉にできないもどかしさが、別の形に……？", 10: "【ヒント：Ending X】すべての記憶（他のエンディング）を取り戻した今、もう一度彼に触れてみよう。" };
-
-        function initAudio() {
-            if(audioCtx) {
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                return;
-            }
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const bufferSize = audioCtx.sampleRate * 2;
-            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const output = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) output[i] = (Math.random() * 2 - 1) * 0.03;
-            const noise = audioCtx.createBufferSource(); noise.buffer = buffer; noise.loop = true;
-            const fireFilter = audioCtx.createBiquadFilter(); fireFilter.type = 'lowpass'; fireFilter.frequency.value = 150;
-            const fireGain = audioCtx.createGain(); fireGain.gain.value = 0.5;
-            noise.connect(fireFilter); fireFilter.connect(fireGain); fireGain.connect(audioCtx.destination); noise.start();
-            
-            const tBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-            const tOutput = tBuffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) tOutput[i] = (Math.random() * 2 - 1) * 0.3;
-            const tNoise = audioCtx.createBufferSource(); tNoise.buffer = tBuffer; tNoise.loop = true;
-            const tFilter = audioCtx.createBiquadFilter(); tFilter.type = 'bandpass'; tFilter.frequency.value = 600;
-            touchGain = audioCtx.createGain(); touchGain.gain.value = 0;
-            tNoise.connect(tFilter); tFilter.connect(touchGain); touchGain.connect(audioCtx.destination); tNoise.start();
-        }
 
         function generateEndingText(earnedEndingId) {
             let resultText = ["書き終え、そっと指を離す。", "彼は自分の手のひらを見つめ……やがて、私の手をぎゅっと握り返した。", "沈黙が落ちる。薪がパチッと音を立てた。"];
@@ -922,9 +958,10 @@
             const isAllSuccess = (targetDiff) => choiceHistory.length === 5 && choiceHistory.every(c => c.diff === targetDiff && c.success);
             const isAllFail = choiceHistory.length === 5 && choiceHistory.every(c => !c.success);
             
-            const allStandardEndingsUnlocked = [1,2,3,4,5,6,7,8,9].every(id => unlockedEndings.includes(id));
+            const unlocked = getUnlockedEndings();
+            const allStandardEndingsUnlocked = [1,2,3,4,5,6,7,8,9].every(id => unlocked.includes(id));
             
-            if (allStandardEndingsUnlocked && !unlockedEndings.includes(10)) earnedEndingId = 10;
+            if (allStandardEndingsUnlocked && !unlocked.includes(10)) earnedEndingId = 10;
             else if (isAllFail) earnedEndingId = 9;
             else if (isAllSuccess(0)) earnedEndingId = 6;
             else if (isAllSuccess(1)) earnedEndingId = 7;
@@ -935,22 +972,30 @@
                 let maxDiff = (highCount >= midCount && highCount >= lowCount) ? 2 : (midCount >= lowCount ? 1 : 0);
                 if (maxDiff === 0) earnedEndingId = 1; else if (maxDiff === 1) earnedEndingId = (playerAffection >= 6) ? 3 : 2; else earnedEndingId = (playerAffection >= 10) ? 5 : 4;
             }
-            let isNew = !unlockedEndings.includes(earnedEndingId);
-            if (isNew) saveEnding(earnedEndingId); else { playerKeys++; saveKeys(); }
+            
+            let isNew = !unlocked.includes(earnedEndingId);
+            if (isNew) saveEnding(earnedEndingId); 
+            else {
+                let keys = getSafeStorageNumber('secretHandshakeKeys', 0);
+                saveKeys(keys + 1); 
+            }
+
             let resultText = generateEndingText(earnedEndingId);
             if (!isNew) { resultText.push("★同じエンディングに到達したため、「てのひらの鍵」を1つ入手しました！", "【てのひらの鍵の使い方】\nスタート画面に戻り, 未解放（🔒）のバッジをタップすると, 鍵を1つ消費してエンディングを解放・閲覧することができます。"); }
             resultText.push("〜 CLEAR！ プレイありがとうございました 〜");
-            const lockedEndings = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(x => !unlockedEndings.includes(x));
+            
+            const currentUnlocked = getUnlockedEndings();
+            const lockedEndings = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].filter(x => !currentUnlocked.includes(x));
             if (lockedEndings.length === 0) resultText.push("全エンディングコンプリート！おめでとうございます！");
             else { let hintId = (lockedEndings.length === 1 && lockedEndings[0] === 10) ? 10 : lockedEndings.filter(x => x !== 10)[Math.floor(Math.random() * lockedEndings.filter(x => x !== 10).length)]; resultText.push(endingHints[hintId]); }
             resultText.push("〜 タイトルに戻ります 〜");
+            
             playText(resultText, () => {
                 nextMark.style.display = 'none'; 
-                msgBox.onclick = () => { 
-                    msgBox.onclick = null; 
-                    addMsgListener(); 
+                setMsgInteraction(() => {
+                    setMsgInteraction(handleMsgClick);
                     showTitle(); 
-                };
+                });
             });
         }
 
@@ -967,7 +1012,6 @@
                 if(gaugeBar) gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
                 blushOverlay.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
                 
-                // 修正: 時間制御方式で警告表示
                 if (Date.now() >= warningEndTime) {
                     if (timeRemaining <= 4000) showDynamicWarning("「……時間, まだ？」", 2000);
                     else if (tickleGauge >= 90) showDynamicWarning("「待って, そこ…っ」", 1500);

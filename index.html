@@ -398,7 +398,6 @@
         let rafId = null;
         let currentChoice = null;
         
-        // 修正: タイマーID管理用
         let dayTransitionTimeout1 = null;
         let dayTransitionTimeout2 = null;
         let warningTimeout = null;
@@ -408,7 +407,6 @@
         let audioTickleNode = null;
         let audioTickleFilter = null;
         let audioTickleGain = null;
-        // 修正: 再生用バッファを保存しておく変数
         let audioTickleBuffer = null; 
         
         let isDrawing = false;
@@ -417,7 +415,6 @@
         let lastY = 0;
         let pathDist = 0;
 
-        // 修正: 画面遷移時等のタイマー破棄関数
         function clearAllTimeouts() {
             if (dayTransitionTimeout1) clearTimeout(dayTransitionTimeout1);
             if (dayTransitionTimeout2) clearTimeout(dayTransitionTimeout2);
@@ -436,6 +433,8 @@
             timeRemaining = 0;
             warningEndTime = 0;
             phase = 'title';
+            const transition = document.getElementById('day-transition');
+            if (transition) transition.style.opacity = '0';
         }
 
         function handleMsgClick() {
@@ -534,16 +533,20 @@
                 evaluateEnding();
                 return;
             }
+            
+            phase = 'transition'; 
+            
             const day = dailyData[currentDayIdx];
             const transition = document.getElementById('day-transition');
             if (transition) {
                 transition.innerText = day.label;
                 transition.style.opacity = '1';
                 
-                // 修正: タイムアウトIDを保存して管理
                 dayTransitionTimeout1 = setTimeout(() => {
+                    if (phase !== 'transition') return;
                     transition.style.opacity = '0';
                     dayTransitionTimeout2 = setTimeout(() => {
+                        if (phase !== 'transition') return;
                         playText(day.intro, () => {
                             if (day.choices) showChoices(day.choices);
                             else evaluateEnding(); 
@@ -606,7 +609,6 @@
             lastY = clientY - rect.top;
             pathDist = 0;
             
-            // 修正: 描画ごとに AudioBufferSourceNode を新しく生成して再生
             if (audioCtx && audioTickleBuffer) {
                 if (audioTickleNode) {
                     try { audioTickleNode.stop(); audioTickleNode.disconnect(); } catch(e) {}
@@ -647,13 +649,45 @@
 
         function stopDrawing(e) {
             if (!isDrawing || phase !== 'draw') return;
-            e.preventDefault();
+            if (e.cancelable) e.preventDefault();
+            
+            let finalX, finalY;
+            let hasFinalCoord = false;
+
+            if (e.changedTouches && e.changedTouches.length > 0) {
+                finalX = e.changedTouches[0].clientX;
+                finalY = e.changedTouches[0].clientY;
+                hasFinalCoord = true;
+            } else if (e.clientX !== undefined) {
+                finalX = e.clientX;
+                finalY = e.clientY;
+                hasFinalCoord = true;
+            }
+
+            if (hasFinalCoord) {
+                const rect = canvas.getBoundingClientRect();
+                const x = finalX - rect.left;
+                const y = finalY - rect.top;
+                const dist = Math.hypot(x - lastX, y - lastY);
+                pathDist += dist;
+                
+                if (dist > 0 && ctx) {
+                    ctx.beginPath();
+                    ctx.moveTo(lastX, lastY);
+                    ctx.lineTo(x, y);
+                    ctx.strokeStyle = '#D84315';
+                    ctx.lineWidth = 6;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+                }
+                tickleGauge += (dist * 0.13);
+            }
+
             isDrawing = false;
             
             if (audioTickleGain) audioTickleGain.gain.value = 0;
-            // 修正: 指を離した際に AudioBufferSourceNode を停止し破棄する
             if (audioTickleNode) {
-                try { audioTickleNode.stop(); audioTickleNode.disconnect(); } catch(e) {}
+                try { audioTickleNode.stop(); audioTickleNode.disconnect(); } catch(err) {}
                 audioTickleNode = null;
             }
 
@@ -708,7 +742,6 @@
             }
             
             if (audioTickleGain) audioTickleGain.gain.value = 0;
-            // 修正: 描画フェーズ終了時にも確実に破棄する
             if (audioTickleNode) {
                 try { audioTickleNode.stop(); audioTickleNode.disconnect(); } catch(e) {}
                 audioTickleNode = null;
@@ -731,7 +764,6 @@
                 warningText.style.opacity = '1';
                 warningEndTime = now + duration;
                 
-                // 修正: タイマーを管理
                 if (warningTimeout) clearTimeout(warningTimeout);
                 warningTimeout = setTimeout(() => {
                     if (performance.now() >= warningEndTime && warningText) warningText.style.opacity = '0';
@@ -806,7 +838,6 @@
                 btn.className = 'menu-btn';
                 btn.style.height = '45px'; btn.style.fontSize = '16px';
                 btn.style.padding = '0 20px'; 
-                // 修正: 幅を100px固定から、8文字が確実に入る幅（180px）に変更
                 btn.style.width = '180px'; 
                 btn.innerText = btnText;
                 btn.onclick = () => {
@@ -859,7 +890,6 @@
             if (!isAudioGraphBuilt) {
                 const bufferSize = ctx.sampleRate * 2;
                 
-                // 修正: バッファの生成のみ行い、再生ノードは作らない設計に変更
                 audioTickleBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
                 const tOutput = audioTickleBuffer.getChannelData(0);
                 for (let i = 0; i < bufferSize; i++) tOutput[i] = (Math.random() * 2 - 1) * 0.6;
@@ -879,7 +909,6 @@
         }
 
         function stopAudio() {
-            // 修正: ノードの確実な停止
             if (audioTickleNode) {
                 try { audioTickleNode.stop(); audioTickleNode.disconnect(); } catch(e) {}
                 audioTickleNode = null;
@@ -986,7 +1015,13 @@
         ['click', 'touchstart'].forEach(evt => {
             document.addEventListener(evt, () => {
                 if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            }, { once: true });
+            }, { passive: true });
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
         });
 
         window.addEventListener('DOMContentLoaded', showTitle);

@@ -414,6 +414,9 @@
         let lastX = 0;
         let lastY = 0;
         let pathDist = 0;
+        
+        // タッチデバイスかどうかを判定（二重発火防止用）
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
         function clearAllTimeouts() {
             if (dayTransitionTimeout1) clearTimeout(dayTransitionTimeout1);
@@ -599,8 +602,10 @@
         }
 
         function startDrawing(e) {
+            if (isTouchDevice && e.type.startsWith('mouse')) return;
             if (phase !== 'draw') return;
-            e.preventDefault();
+            if (e.cancelable) e.preventDefault();
+            
             isDrawing = true;
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -622,8 +627,10 @@
         }
 
         function draw(e) {
+            if (isTouchDevice && e.type.startsWith('mouse')) return;
             if (!isDrawing || phase !== 'draw') return;
-            e.preventDefault();
+            if (e.cancelable) e.preventDefault();
+            
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -648,41 +655,10 @@
         }
 
         function stopDrawing(e) {
+            if (isTouchDevice && e.type.startsWith('mouse')) return;
             if (!isDrawing || phase !== 'draw') return;
             if (e.cancelable) e.preventDefault();
             
-            let finalX, finalY;
-            let hasFinalCoord = false;
-
-            if (e.changedTouches && e.changedTouches.length > 0) {
-                finalX = e.changedTouches[0].clientX;
-                finalY = e.changedTouches[0].clientY;
-                hasFinalCoord = true;
-            } else if (e.clientX !== undefined) {
-                finalX = e.clientX;
-                finalY = e.clientY;
-                hasFinalCoord = true;
-            }
-
-            if (hasFinalCoord) {
-                const rect = canvas.getBoundingClientRect();
-                const x = finalX - rect.left;
-                const y = finalY - rect.top;
-                const dist = Math.hypot(x - lastX, y - lastY);
-                pathDist += dist;
-                
-                if (dist > 0 && ctx) {
-                    ctx.beginPath();
-                    ctx.moveTo(lastX, lastY);
-                    ctx.lineTo(x, y);
-                    ctx.strokeStyle = '#D84315';
-                    ctx.lineWidth = 6;
-                    ctx.lineCap = 'round';
-                    ctx.stroke();
-                }
-                tickleGauge += (dist * 0.13);
-            }
-
             isDrawing = false;
             
             if (audioTickleGain) audioTickleGain.gain.value = 0;
@@ -691,14 +667,12 @@
                 audioTickleNode = null;
             }
 
-            if (pathDist > 35) {
-                currentStrokes++;
-                if (strokeCounter && currentChoice) {
-                    const remain = Math.max(0, currentChoice.req - currentStrokes);
-                    strokeCounter.innerText = `残り: ${remain} 画`;
-                    if (currentStrokes >= currentChoice.req) {
-                        if (finishBtn) finishBtn.style.display = 'block';
-                    }
+            currentStrokes++;
+            if (strokeCounter && currentChoice) {
+                const remain = Math.max(0, currentChoice.req - currentStrokes);
+                strokeCounter.innerText = `残り: ${remain} 画`;
+                if (currentStrokes >= currentChoice.req) {
+                    if (finishBtn) finishBtn.style.display = 'block';
                 }
             }
         }
@@ -1009,7 +983,10 @@
             } else { 
                 lastTime = timestamp; 
             }
-            rafId = requestAnimationFrame(gameLoop);
+            
+            if (isGameLoopRunning) {
+                rafId = requestAnimationFrame(gameLoop);
+            }
         }
 
         ['click', 'touchstart'].forEach(evt => {

@@ -392,6 +392,7 @@
                 <p>② 指で画面をなぞって、<strong>手を離した時</strong>に1画とカウントされます。</p>
                 <p>③ 制限時間内に「目標画数」をすべて書き終えると成功！</p>
                 <p>④ 難易度が高いほど好感度が上がります。</p>
+                <p>⑤ 手のひらには「敏感な場所」が隠されています。そこをなぞると、くすぐったさが急上昇するので要注意！</p>
                 <p>★ エンディングは全部で10種類。特定の選択肢を選び続けると特別な結末が…?</p>
                 <p>🔑 同じEDに再度到達すると「てのひらの鍵」が手に入り、未解放EDをアンロックできます。</p>
             </div>
@@ -415,7 +416,7 @@
                 <div class="button-group" id="choices-container"></div>
             </div>
             <button id="finish-btn" onclick="completeDrawPhase()">書き終える</button>
-            <div id="message-box" onclick="advanceText()">
+            <div id="message-box">
                 <p id="message-text"></p>
                 <div class="blink-triangle" id="next-mark">▼</div>
             </div>
@@ -431,7 +432,6 @@
 
     <script>
         const canvas = document.getElementById('canvas-layer');
-        const ctx = canvas ? canvas.getContext('2d') : null;
         const msgBox = document.getElementById('message-box');
         const msgText = document.getElementById('message-text');
         const nextMark = document.getElementById('next-mark');
@@ -447,6 +447,7 @@
         const warningText = document.getElementById('warning-text');
         const blushOverlay = document.getElementById('blush-overlay');
 
+        let ctx = null;
         let currentTextSequence = [];
         let textCallback = null;
         let phase = 'title';
@@ -466,13 +467,22 @@
         let lastY = 0;
 
         function resizeCanvas() {
-            if(canvas) {
-                canvas.width = canvas.parentElement.clientWidth;
-                canvas.height = canvas.parentElement.clientHeight;
-            }
+            if(!canvas) return;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            canvas.style.width = `${rect.width}px`;
+            canvas.style.height = `${rect.height}px`;
+            if (ctx) ctx.scale(dpr, dpr);
         }
 
         window.addEventListener('resize', resizeCanvas);
+
+        function handleMsgClick() {
+            if (phase === 'text') advanceText();
+        }
+        if(msgBox) msgBox.addEventListener('click', handleMsgClick);
 
         function playText(texts, onComplete) {
             currentTextSequence = [...texts];
@@ -500,12 +510,11 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
             
-            if (msgBox) msgBox.onclick = advanceText;
-            
             playerAffection = 0;
             currentDayIdx = 0;
             choiceHistory = [];
             
+            if(!ctx && canvas) ctx = canvas.getContext('2d');
             resizeCanvas();
             
             lastTime = performance.now();
@@ -517,8 +526,19 @@
             startDay();
         }
 
+        function clearCanvas() {
+            if (ctx && canvas) {
+                ctx.save();
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.fillStyle = '#FFF9F5';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            }
+        }
+
         function startDay() {
             if (msgBox) msgBox.style.display = 'none'; 
+            clearCanvas(); 
             
             if (currentDayIdx >= dailyData.length) {
                 evaluateEnding();
@@ -567,11 +587,7 @@
             currentChoice = choice;
             lastTime = performance.now();
             
-            // 日付が変わったら前に書いたものを完全にクリア
-            if (canvas) {
-                ctx.fillStyle = '#FFF9F5';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
+            clearCanvas();
             
             if (drawInstruction) drawInstruction.style.display = 'block';
             if (gaugeLabel) gaugeLabel.style.display = 'block';
@@ -586,12 +602,13 @@
 
         function startDrawing(e) {
             if (phase !== 'draw') return;
+            e.preventDefault();
             isDrawing = true;
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            lastX = clientX - rect.left;
-            lastY = clientY - rect.top;
+            lastX = (clientX - rect.left) * (window.devicePixelRatio || 1);
+            lastY = (clientY - rect.top) * (window.devicePixelRatio || 1);
         }
 
         function draw(e) {
@@ -600,8 +617,8 @@
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            const x = clientX - rect.left;
-            const y = clientY - rect.top;
+            const x = (clientX - rect.left) * (window.devicePixelRatio || 1);
+            const y = (clientY - rect.top) * (window.devicePixelRatio || 1);
             
             const dist = Math.hypot(x - lastX, y - lastY);
 
@@ -610,13 +627,12 @@
                 ctx.moveTo(lastX, lastY);
                 ctx.lineTo(x, y);
                 ctx.strokeStyle = '#D84315';
-                ctx.lineWidth = 6;
+                ctx.lineWidth = 6 * (window.devicePixelRatio || 1);
                 ctx.lineCap = 'round';
                 ctx.stroke();
             }
             
-            // 敏感エリアのロジックを削除し、全体的に少しゲージが上がりづらい難易度に調整
-            tickleGauge += (dist * 0.13);
+            tickleGauge += (dist * 0.13 / (window.devicePixelRatio || 1));
 
             lastX = x;
             lastY = y;
@@ -640,10 +656,10 @@
             canvas.addEventListener('mousedown', startDrawing);
             canvas.addEventListener('mousemove', draw);
             canvas.addEventListener('mouseup', stopDrawing);
-            canvas.addEventListener('mouseout', stopDrawing);
             canvas.addEventListener('touchstart', startDrawing, {passive: false});
             canvas.addEventListener('touchmove', draw, {passive: false});
             canvas.addEventListener('touchend', stopDrawing);
+            canvas.addEventListener('touchcancel', stopDrawing);
         }
 
         function completeDrawPhase() {
@@ -737,6 +753,7 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('title-screen').classList.add('active');
             renderBadges();
+            isGameLoopRunning = false;
         }
 
         function showHowTo() {
@@ -788,29 +805,37 @@
         }
 
         function replayEnding(id) {
-            if(!ctx) return;
+            if(!ctx && canvas) ctx = canvas.getContext('2d');
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
-            msgBox.onclick = advanceText;
+            
+            if(msgBox) msgBox.removeEventListener('click', handleMsgClick);
+            msgBox.onclick = advanceText; 
+            
             resizeCanvas(); 
             drawInstruction.style.display = 'none'; gaugeLabel.style.display = 'none'; gaugeContainer.style.display = 'none';
             strokeCounter.style.display = 'none'; timeCounter.style.display = 'none'; warningText.style.opacity = '0';
             finishBtn.style.display = 'none'; choiceOverlay.style.display = 'none';
             document.getElementById('blush-overlay').style.opacity = '0';
-            ctx.fillStyle = '#FFF9F5'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            clearCanvas();
+            
             let resultText = generateEndingText(id);
             resultText.unshift(`エンディング${id}を再生します`);
             resultText.push("〜 閲覧終了 〜"); resultText.push("〜 タイトルに戻ります 〜");
             playText(resultText, () => {
                 nextMark.style.display = 'none'; 
-                msgBox.onclick = () => { msgBox.onclick = advanceText; showTitle(); };
+                msgBox.onclick = () => { 
+                    msgBox.onclick = null; 
+                    msgBox.addEventListener('click', handleMsgClick); 
+                    showTitle(); 
+                };
             });
         }
 
         const dailyData = [
             { day: 1, label: "１日目", intro: ["夕食後の穏やかな時間。パチパチと暖炉の火が爆ぜる音が部屋に響いている。", "「……ほら、手。貸して」", "（……この手に、文字を書いてみたら、少しは伝わるかな？）", "（手始めに、なんて書いてみよう？）"], choices: [{ text: "「あ」", req: 3, reward: 1, diff: 0 }, { text: "「ねえ」", req: 6, reward: 2, diff: 1 }, { text: "「おつかれ」", req: 9, reward: 3, diff: 2 }], success: ["「……ん。なんか、悪くないな」", "（指先から伝わる彼の体温が、私の手にもじんわりと移ってくる）"], fail: ["「っ、ちょ！ くすぐったい！」", "（慌てて手を引っ込められてしまった……また明日、試してみよう）"] },
-            { day: 2, label: "２日目", intro: ["翌日の夜。", "「……あんま、くすぐったくすんなよ」", "そう言いながらも、彼は自然に手を差し出してくれた。", "（今日はもう少しだけ、踏み込んだことを書いてみようかな）"], choices: [{ text: "「い」", req: 2, reward: 1, diff: 0 }, { text: "「いつも」", req: 6, reward: 2, diff: 1 }, { text: "「きもちいい」", req: 14, reward: 3, diff: 2 }], success: ["「……お前、手あったかいな」", "（ぽつりと呟いた彼の耳が、少し赤くなっている気がした）"], fail: ["「あーっ！ もう限界！」", "（手のひらは敏感んだ、と彼はムスッとしている。次こそは……）"] },
+            { day: 2, label: "２日目", intro: ["翌日の夜。", "「……あんま、くすぐったくすんなよ」", "そう言いながらも、彼は自然に手を差し出してくれた。", "（今日はもう少しだけ、踏み込んだことを書いてみようかな）"], choices: [{ text: "「い」", req: 2, reward: 1, diff: 0 }, { text: "「いつも」", req: 6, reward: 2, diff: 1 }, { text: "「きもちいい」", req: 14, reward: 3, diff: 2 }], success: ["「……お前、手あったかいな」", "（ぽつりと呟いた彼の耳が、少し赤くなっている気がした）"], fail: ["「あーっ！ もう限界！」", "（手のひらは敏感なんだ、と彼はムスッとしている。次こそは……）"] },
             { day: 3, label: "３日目", intro: ["３日目の夜。今日は彼の方から無言で手が差し出された。", "（今日は、少し長めに書いてみようかな……？）"], choices: [{ text: "「し」", req: 1, reward: 1, diff: 0 }, { text: "「がんばれ」", req: 13, reward: 2, diff: 1 }, { text: "「ありがとう」", req: 14, reward: 3, diff: 2 }], success: ["「……もっと、続けてもいいぞ」", "（そっぽを向きながら言った彼の声に、胸の奥がぎゅっとする）"], fail: ["「……っ、ん、やっぱ無理！！」", "（変に力が入ってしまった。もどかしいけれど、このやり取りも悪くないかも）"] },
             { day: 4, label: "４日目", intro: ["４日目。", "「……最近、お前のマッサージがないと落ち着かないかも」", "無自覚にそんなことを言う彼に、心臓が破裂しそうだ。", "（今日こそ、もっと踏み込んだ言葉を……）"], choices: [{ text: "「て」", req: 1, reward: 1, diff: 0 }, { text: "「あしたも」", req: 11, reward: 2, diff: 1 }, { text: "「ずっといっしょ」", req: 13, reward: 3, diff: 2 }], success: ["「……ん。なんか、すごく落ち着く」", "（確かな温もりが伝わってくる。いよいよ明日は、一番伝えたいことを……）"], fail: ["「あーもう、ごめん！ 限界！！」", "（あともう少しだったのに！ 彼の耳は真っ赤に染まっている）"] },
             { day: 5, label: "最終日", intro: ["そして、５日目の夜。", "「お前が何書きたいのか、ちゃんと知りたい。教えてくれ」", "彼の真剣な眼差し。もう誤魔化しはきかない。", "（彼の手のひらに、私の本当の想いを……なんて書こう？）"], choices: [{ text: "「る」", req: 1, reward: 2, diff: 0 }, { text: "「だいすき」", req: 15, reward: 4, diff: 1 }, { text: "「あいしてる」", req: 8, reward: 6, diff: 2 }] }
@@ -862,7 +887,11 @@
             let earnedEndingId = 1;
             const isAllSuccess = (targetDiff) => choiceHistory.length === 5 && choiceHistory.every(c => c.diff === targetDiff && c.success);
             const isAllFail = choiceHistory.length === 5 && choiceHistory.every(c => !c.success);
-            if (unlockedEndings.length === 9 && !unlockedEndings.includes(10)) earnedEndingId = 10;
+            
+            // 全エンディング(1-9)が解放されているか正確に判定
+            const allStandardEndingsUnlocked = [1,2,3,4,5,6,7,8,9].every(id => unlockedEndings.includes(id));
+            
+            if (allStandardEndingsUnlocked && !unlockedEndings.includes(10)) earnedEndingId = 10;
             else if (isAllFail) earnedEndingId = 9;
             else if (isAllSuccess(0)) earnedEndingId = 6;
             else if (isAllSuccess(1)) earnedEndingId = 7;
@@ -882,18 +911,20 @@
             if (lockedEndings.length === 0) resultText.push("全エンディングコンプリート！おめでとうございます！");
             else { let hintId = (lockedEndings.length === 1 && lockedEndings[0] === 10) ? 10 : lockedEndings.filter(x => x !== 10)[Math.floor(Math.random() * lockedEndings.filter(x => x !== 10).length)]; resultText.push(endingHints[hintId]); }
             resultText.push("〜 タイトルに戻ります 〜");
-            playText(resultText, () => { nextMark.style.display = 'none'; msgBox.onclick = () => { msgBox.onclick = advanceText; showTitle(); }; });
+            playText(resultText, () => { nextMark.style.display = 'none'; msgBox.onclick = () => { msgBox.onclick = null; msgBox.addEventListener('click', handleMsgClick); showTitle(); }; });
         }
 
         function gameLoop(timestamp) {
+            if (!isGameLoopRunning) return;
+            
             if (phase === 'draw') {
                 let dt = Math.min(timestamp - lastTime, 32); 
                 lastTime = timestamp;
                 timeRemaining -= dt;
-                timeCounter.innerText = `残り時間: ${Math.max(0, timeRemaining / 1000).toFixed(1)}秒`;
+                if(timeCounter) timeCounter.innerText = `残り時間: ${Math.max(0, timeRemaining / 1000).toFixed(1)}秒`;
                 
                 tickleGauge = Math.max(0, tickleGauge - (0.01 * dt));
-                gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
+                if(gaugeBar) gaugeBar.style.width = Math.min(100, tickleGauge) + '%';
                 blushOverlay.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
                 
                 if (!warningShown) {
@@ -904,11 +935,12 @@
                 }
                 if (timeRemaining <= 0 || tickleGauge >= 100) endDrawPhase(false);
                 
-                // 消え方を早めるためにalpha値を調整
-                ctx.fillStyle = 'rgba(255, 249, 245, 0.15)'; 
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                if(ctx && canvas) {
+                    ctx.fillStyle = 'rgba(255, 249, 245, 0.15)'; 
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
             } else { lastTime = timestamp; }
-            if (isGameLoopRunning) requestAnimationFrame(gameLoop);
+            requestAnimationFrame(gameLoop);
         }
 
         window.addEventListener('DOMContentLoaded', showTitle);

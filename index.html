@@ -398,7 +398,9 @@
         let rafId = null;
         let currentChoice = null;
         
+        // 音響管理
         let audioCtx = null;
+        let isAudioGraphBuilt = false;
         let audioNoiseNode = null;
         let audioNoiseFilter = null;
         let audioNoiseGain = null;
@@ -481,15 +483,15 @@
         }
 
         function startLoop() {
-            if (isGameLoopRunning) return;
+            stopLoop(); // 重複起動防止
             isGameLoopRunning = true;
             lastTime = performance.now();
             rafId = requestAnimationFrame(gameLoop);
         }
 
         function startGame() {
+            stopLoop(); // 確実に止めてから開始
             resetGameState();
-            // AudioはinitAudioの中で初期化・制御する
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById('game-screen').classList.add('active');
@@ -561,7 +563,7 @@
             currentChoice = choice;
             lastTime = performance.now();
             
-            // ビジュアル面での初期化（ゲージと赤みのリセット）
+            // ビジュアル面での初期化
             if (gaugeBar) gaugeBar.style.width = '0%';
             if (blushOverlay) blushOverlay.style.opacity = '0';
             
@@ -805,54 +807,68 @@
         }
 
         function initAudio() {
-            // 常に初期化前に停止処理を行う
-            stopAudio();
-            
             const ctx = getAudioContext();
-            if (ctx.state === 'suspended') ctx.resume();
             
-            const bufferSize = ctx.sampleRate * 2;
-            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-            const output = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) output[i] = (Math.random() * 2 - 1) * 0.03;
-            
-            audioNoiseNode = ctx.createBufferSource(); 
-            audioNoiseNode.buffer = buffer; audioNoiseNode.loop = true;
-            audioNoiseFilter = ctx.createBiquadFilter(); audioNoiseFilter.type = 'lowpass'; audioNoiseFilter.frequency.value = 150;
-            audioNoiseGain = ctx.createGain(); audioNoiseGain.gain.value = 0.5;
-            audioNoiseNode.connect(audioNoiseFilter).connect(audioNoiseGain).connect(ctx.destination);
-            audioNoiseNode.start();
-            
-            const tBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-            const tOutput = tBuffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) tOutput[i] = (Math.random() * 2 - 1) * 0.3;
-            audioTickleNode = ctx.createBufferSource(); 
-            audioTickleNode.buffer = tBuffer; audioTickleNode.loop = true;
-            audioTickleFilter = ctx.createBiquadFilter(); audioTickleFilter.type = 'bandpass'; audioTickleFilter.frequency.value = 600;
-            audioTickleGain = ctx.createGain(); audioTickleGain.gain.value = 0;
-            audioTickleNode.connect(audioTickleFilter).connect(audioTickleGain).connect(ctx.destination);
-            audioTickleNode.start();
+            // ノードを破棄せず、初回のみグラフを構築して使い回す（安定化）
+            if (!isAudioGraphBuilt) {
+                const bufferSize = ctx.sampleRate * 2;
+                
+                // ノイズ音源構築
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const output = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) output[i] = (Math.random() * 2 - 1) * 0.03;
+                
+                audioNoiseNode = ctx.createBufferSource(); 
+                audioNoiseNode.buffer = buffer; 
+                audioNoiseNode.loop = true;
+                
+                audioNoiseFilter = ctx.createBiquadFilter(); 
+                audioNoiseFilter.type = 'lowpass'; 
+                audioNoiseFilter.frequency.value = 150;
+                
+                audioNoiseGain = ctx.createGain(); 
+                audioNoiseGain.gain.value = 0.5;
+                
+                audioNoiseNode.connect(audioNoiseFilter).connect(audioNoiseGain).connect(ctx.destination);
+                audioNoiseNode.start();
+                
+                // くすぐったさ音源構築
+                const tBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const tOutput = tBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) tOutput[i] = (Math.random() * 2 - 1) * 0.3;
+                
+                audioTickleNode = ctx.createBufferSource(); 
+                audioTickleNode.buffer = tBuffer; 
+                audioTickleNode.loop = true;
+                
+                audioTickleFilter = ctx.createBiquadFilter(); 
+                audioTickleFilter.type = 'bandpass'; 
+                audioTickleFilter.frequency.value = 600;
+                
+                audioTickleGain = ctx.createGain(); 
+                audioTickleGain.gain.value = 0;
+                
+                audioTickleNode.connect(audioTickleFilter).connect(audioTickleGain).connect(ctx.destination);
+                audioTickleNode.start();
+                
+                isAudioGraphBuilt = true;
+            }
+
+            // オーディオコンテキストの一時停止状態を解除するだけで音を出す
+            if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
         }
 
         function stopAudio() {
-            if (audioNoiseNode) {
-                try { audioNoiseNode.stop(); } catch(e) {}
-                audioNoiseNode.disconnect();
-                audioNoiseNode = null;
+            // ノードを破壊せず、コンテキスト全体を一時停止させることで安全に無音化する
+            if (audioCtx && audioCtx.state === 'running') {
+                audioCtx.suspend();
             }
-            if (audioNoiseFilter) { audioNoiseFilter.disconnect(); audioNoiseFilter = null; }
-            if (audioNoiseGain) { audioNoiseGain.disconnect(); audioNoiseGain = null; }
-            
-            if (audioTickleNode) {
-                try { audioTickleNode.stop(); } catch(e) {}
-                audioTickleNode.disconnect();
-                audioTickleNode = null;
-            }
-            if (audioTickleFilter) { audioTickleFilter.disconnect(); audioTickleFilter = null; }
-            if (audioTickleGain) { audioTickleGain.disconnect(); audioTickleGain = null; }
         }
 
         function replayEnding(id) {
+            stopLoop(); // 確実に止めてから開始
             resetGameState();
             initAudio();
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -927,9 +943,12 @@
                 if (timeRemaining <= 0 || tickleGauge >= 100) endDrawPhase(false);
                 
                 if(ctx && canvas) {
-                    const dpr = window.devicePixelRatio || 1;
+                    // キャンバスの基準点を一時的にリセットして描画することで、残像やゴミを防ぐ
+                    ctx.save();
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
                     ctx.fillStyle = 'rgba(255, 249, 245, 0.05)'; 
-                    ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.restore();
                 }
             } else { 
                 lastTime = timestamp; 

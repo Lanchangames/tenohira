@@ -317,20 +317,20 @@
             <div class="button-group">
                 <button class="menu-btn" onclick="showHowTo()">遊び方</button>
                 <button class="menu-btn" onclick="startGame()">はじめから</button>
-                <button class="menu-btn" onclick="window.open('https://example.com/form', '_blank')">感想を送る</button>
+                <button class="menu-btn" onclick="window.open('https://marshmallow-qa.com/oj0afz3donoawsc', '_blank')">感想を送る</button>
             </div>
         </div>
 
         <div id="how-to-screen" class="screen">
             <img src="title.png" alt="ゆびさきで秘密を" id="title-logo" style="max-width: 200px; margin-bottom: 20px;">
             <div class="instruction-text">
-                <p>① 毎日、書きたい言葉（難易度）を選びます。</p>
-                <p>② 指で画面をなぞって、<strong>手を離した時</strong>に1画とカウントされます。</p>
-                <p>③ 制限時間内に「目標画数」をすべて書き終えると成功！</p>
-                <p>④ 難易度が高いほど好感度が上がります。</p>
-                <p>⑤ 手のひらには「敏感な場所」が隠されています。そこをなぞると、くすぐったさが急上昇するので要注意！</p>
-                <p>★ エンディングは全部で10種類。特定の選択肢を選び続けると特別な結末が…?</p>
-                <p>🔑 同じEDに再度到達すると「てのひらの鍵」が手に入り、未解放EDをアンロックできます。</p>
+                <p>・ 毎日、書きたい言葉を選びます。</p>
+                <p>・ 指で画面をなぞって、<strong>手を離した時</strong>に1画とカウントされます。</p>
+                <p>・ 制限時間内に目標画数を書き終えると成功！</p>
+                <p>・ 選択肢や成功率でエンディングが変わります。</p>
+                <p>・ 点は1画にカウントされないので要注意。</p>
+                <p>★ エンディングは全部で10種類。全部ハッピーエンドなのでご安心ください！</p>
+                <p>🔑 同じエンディングに到達すると「てのひらの鍵」が手に入り、未解放えエンディングをアンロックできます。</p>
             </div>
             <div class="button-group">
                 <button class="menu-btn" onclick="showTitle()">タイトルへ戻る</button>
@@ -342,13 +342,13 @@
             <canvas id="canvas-layer"></canvas>
             <div id="day-transition">１日目</div>
             <div id="draw-instruction">てのひらに文字を書こう</div>
-            <div id="gauge-label">🐾 彼のくすぐったいゲージ 🐾</div>
+            <div id="gauge-label">🐾 ヴェインのくすぐったいゲージ 🐾</div>
             <div id="gauge-container"><div id="gauge-bar"></div></div>
             <div id="stroke-counter">残り: 0 画</div>
             <div id="time-counter">残り時間: 0.0秒</div>
-            <div id="warning-text">「ふふ、くすぐったい」</div>
+            <div id="warning-text">ふふっ、くすぐったい…</div>
             <div id="choice-overlay">
-                <div class="choice-hint">※画数が多いほど制限時間が長く、好感度も上がります</div>
+                <div class="choice-hint">手のひらになんて書こうか…</div>
                 <div class="button-group" id="choices-container"></div>
             </div>
             <button id="finish-btn" onclick="completeDrawPhase()">書き終える</button>
@@ -820,7 +820,7 @@
         function tryUnlockEnding(id) {
             let playerKeys = getSafeStorageNumber('secretHandshakeKeys', 0);
             if (id === 10) {
-                showCustomModal('エンディング ★ は鍵で解放できません。\n他の9つのエンディングをすべて解放した状態で、もう一度プレイして最後までたどり着いてください。', false);
+                showCustomModal('エンディング 10 は鍵で解放できません。\n他の9つのエンディングをすべて解放した状態で、再度プレイして最後までたどり着いてください。', false);
                 return;
             }
             if (playerKeys > 0) {
@@ -894,11 +894,11 @@
             blushOverlay.style.opacity = '0';
             clearCanvas();
             let resultText = generateEndingText(id);
-            resultText.unshift(`エンディング${id}を再生します`);
-            resultText.push("〜 閲覧終了 〜");
+            resultText.unshift(`エンディング${id}`);
+            resultText.push("〜 HAPPY END 〜");
             playText(resultText, () => {
                 nextMark.style.display = 'none'; 
-                showCustomModal(`エンディング${id}の閲覧が終了しました。\n結果をSNSにシェアしますか？`, false, () => showTitle(), true, id);
+                showCustomModal(`エンディング${id}を振り返りました。\n思い出をSNSにシェアしますか？`, false, () => showTitle(), true, id);
             });
         }
 
@@ -928,10 +928,10 @@
                 saveKeys(keys + 1); 
             }
             let resultText = generateEndingText(earnedEndingId);
-            resultText.push("〜 CLEAR！ プレイありがとうございました 〜");
+            resultText.push("〜 HAPPY END 〜");
             playText(resultText, () => {
                 nextMark.style.display = 'none'; 
-                showCustomModal(`クリア！エンディング${earnedEndingId}に到達しました。\n結果をSNSにシェアしますか？`, false, () => showTitle(), true, earnedEndingId);
+                showCustomModal(`エンディング${earnedEndingId}に到達しました。\n結果をSNSにシェアしますか？`, false, () => showTitle(), true, earnedEndingId);
             });
         }
 
@@ -954,10 +954,10 @@
                 if(blushOverlay) blushOverlay.style.opacity = Math.max(0, (tickleGauge - 20) / 80) * 0.55;
                 
                 if (performance.now() >= warningEndTime) {
-                    if (timeRemaining <= 4000) showDynamicWarning("「……時間, まだ？」", 2000);
-                    else if (tickleGauge >= 90) showDynamicWarning("「待って, そこ…っ」", 1500);
-                    else if (tickleGauge >= 60) showDynamicWarning("「ちょっと…」", 1500);
-                    else if (tickleGauge >= 30 && Math.random() < 0.02) showDynamicWarning("「ふふ, くすぐったい」", 1500);
+                    if (timeRemaining <= 4000) showDynamicWarning("……ふふっ、くすぐったい…", 2000);
+                    else if (tickleGauge >= 90) showDynamicWarning("待って、そこっ…", 1500);
+                    else if (tickleGauge >= 60) showDynamicWarning("ランちゃんっ…！", 1500);
+                    else if (tickleGauge >= 30 && Math.random() < 0.02) showDynamicWarning("くすぐったいぜ…", 1500);
                 }
                 
                 if (timeRemaining <= 0 || tickleGauge >= 100) endDrawPhase(false);
@@ -981,7 +981,20 @@
         window.addEventListener('DOMContentLoaded', showTitle);
         
         const dailyData = [
-            { day: 1, label: "１日目", intro: ["夕食後の穏やかな時間。パチパチと暖炉の火が爆ぜる音が部屋に響いている。", "「……ほら、手。貸して」", "（……この手に、文字を書いてみたら、少しは伝わるかな？）", "（手始めに、なんて書いてみよう？）"], choices: [{ text: "「あ」", req: 3, reward: 1, diff: 0 }, { text: "「ねえ」", req: 6, reward: 2, diff: 1 }, { text: "「おつかれ」", req: 9, reward: 3, diff: 2 }], success: ["「……ん。なんか, 悪くないな」", "（指先から伝わる彼の体温が, 私の手にもじんわりと移ってくる）"], fail: ["「っ, ちょ！ くすぐったい！」", "（慌てて手を引っ込められてしまった……また明日, 試してみよう）"] },
+            { day: 1, label: "１日目", intro: ["騎士団の仕事が落ち着いている日は、決まってヴェインが夕飯を作りに来てくれる。彼の美味しいご飯も、一緒に過ごす時間も大好きで、そんな日はとても幸せだ。",
+                                            "久しぶりに立て込んだ予定もなく、今日から数日間はこの時間を楽しめそうだ。そう考えて、ひそかに胸を躍らせる。", 
+                                            "俺はヴェインのことが好きだ。",
+                                            "ただの幼馴染としてだけじゃなくて、ずっと昔から恋をしている。優しくておおらかで、貴重な自由時間を使って俺のためにご飯を作ってくれるヴェイン。恋をしない方がおかしい。", 
+                                            "__夕食後。たわいもないおしゃべりをしながら考えた。俺はヴェインに素敵なものをたくさんもらっているのに、ひとつも返せていないのではないか。そんなのは嫌だ。俺もヴェインに何か返したい。", 
+                                            "そういえば、この前部下に手のツボのマッサージを教えてもらったな。あれならば、俺にもまねできるかもしれない。ヴェインに提案すると、「じゃあお願いしちゃおっかな！」と、明るい笑顔で答えてくれた。", 
+                                            "ヴェインの手を取る。俺よりも大きくてゴツゴツした手。昔はあんなに小さかったのに、みんなを守るために努力を重ねた結果だ。愛おしさが溢れた。",
+                                            "大好きな人の手に触れるのはとてもどきどきしたけれど、俺はその気持ちを振り払ってマッサージに集中した。ヴェインが「なんか効いてる気がするぜ！」と言ってくれて、得意気になる。",
+                                            "…ふと、いたずらを思いついた。小さい頃にやったみたいに、どさくさに紛れて手のひらに文字を書いてみよう。ヴェインは気づいてくれるだろうか。", 
+                                            "ほんの思い付きだが、なんだか楽しそうだ。…手始めに、なんと書いてみようか。"], 
+             choices: [{ text: "「あ」", req: 3, reward: 1, diff: 0 }, { text: "「ほし」", req: 5, reward: 2, diff: 1 }, { text: "「おいしい」", req: 8, reward: 3, diff: 2 }],
+             success: ["「……ランちゃん、ありがとな！すっごい回復した気がするぜ！」", "指先から伝わるヴェインの体温にドキドキする。これはマッサージで、やましいことなんかひとつもないはずなのに。" "俺はなんだか得した気分になりながら、得意気に手を離した。", ], 
+             fail: ["「っ、ランちゃん！ くすぐったい！」", "耐えきれなくなったヴェインが、大げさに手を振りほどく。" "「すまないヴェイン、俺の技術もまだまだだな。明日までに勉強しておくよ。」",  "急に手のひらが寂しくなってしまった。…ヴェインの手、温かかったな。", ] },
+            
             { day: 2, label: "２日目", intro: ["翌日の夜。", "「……あんま, くすぐったくすんなよ」", "そう言いながらも, 彼は自然に手を差し出してくれた。", "（今日はもう少しだけ, 踏み込んだことを書いてみようかな）"], choices: [{ text: "「い」", req: 2, reward: 1, diff: 0 }, { text: "「いつも」", req: 6, reward: 2, diff: 1 }, { text: "「きもちいい」", req: 14, reward: 3, diff: 2 }], success: ["「……お前, 手あったかいな」", "（ぽつりと呟いた彼の耳が, 少し赤くなっている気がした）"], fail: ["「あーっ！ もう限界！」", "（手のひらは敏感なんだ, と彼はムスッとしている。次こそは……）"] },
             { day: 3, label: "３日目", intro: ["３日目の夜。今日は彼の方から無言で手が差し出された。", "（今日は, 少し長めに書いてみようかな……？）"], choices: [{ text: "「し」", req: 1, reward: 1, diff: 0 }, { text: "「がんばれ」", req: 13, reward: 2, diff: 1 }, { text: "「ありがとう」", req: 14, reward: 3, diff: 2 }], success: ["「……もっと, 続けてもいいぞ」", "（そっぽを向きながら言った彼の声に, 胸の奥がぎゅっとする）"], fail: ["「……っ, ん, やっぱ無理！！」", "（変に力が入ってしまった。もどかしいけれど, このやり取りも悪くないかも）"] },
             { day: 4, label: "４日目", intro: ["４日目。", "「……最近, お前のマッサージがないと落ち着かないかも」", "無自覚にそんなことを言う彼に, 心臓が破裂しそうだ。", "（今日こそ, もっと踏み込んだ言葉を……）"], choices: [{ text: "「て」", req: 1, reward: 1, diff: 0 }, { text: "「あしたも」", req: 11, reward: 2, diff: 1 }, { text: "「ずっといっしょ」", req: 13, reward: 3, diff: 2 }], success: ["「……ん。なんか, すごく落ち着く」", "（確かな温もりが伝わってくる。いよいよ明日は, 一番伝えたいことを……）"], fail: ["「あーもう, ごめん！ 限界！！」", "（あともう少しだったのに！ 彼の耳は真っ赤に染まっている）"] },

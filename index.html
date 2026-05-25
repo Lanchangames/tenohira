@@ -643,7 +643,9 @@
             
             stopAudioTickle();
 
+            if (pathDist > 15) {
             currentStrokes++;
+            }
             if (strokeCounter && currentChoice) {
                 const remain = Math.max(0, currentChoice.req - currentStrokes);
                 strokeCounter.innerText = `残り: ${remain} 画`;

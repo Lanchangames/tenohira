@@ -587,9 +587,13 @@
             if (blushOverlay) blushOverlay.style.opacity = '0';
             
             clearCanvas();
-            
-            if (drawInstruction) drawInstruction.style.display = 'block';
-            if (gaugeLabel) gaugeLabel.style.display = 'block';
+            if (drawInstruction) {
+            drawInstruction.innerText = `てのひらに${choice.text}と書こう`;
+            drawInstruction.style.display = 'block';
+        }
+        
+        if (gaugeLabel) gaugeLabel.style.display = 'block';
+          
             if (gaugeContainer) gaugeContainer.style.display = 'block';
             if (strokeCounter) {
                 strokeCounter.style.display = 'block';
